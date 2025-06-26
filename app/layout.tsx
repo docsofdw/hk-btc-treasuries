@@ -1,4 +1,4 @@
-import { CheckoutRedirect } from "@/components/payments/checkout-redirect"
+// import { CheckoutRedirect } from "@/components/payments/checkout-redirect"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { TailwindIndicator } from "@/components/utility/tailwind-indicator"
 import { ClerkProvider } from "@clerk/nextjs"
@@ -51,7 +51,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <TooltipProvider>
             {children}
-            <CheckoutRedirect />
+            {/* <CheckoutRedirect /> */}
 
             <TailwindIndicator />
             <Toaster />

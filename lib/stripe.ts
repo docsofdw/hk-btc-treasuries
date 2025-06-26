@@ -1,15 +1,18 @@
+// Stripe disabled for MVP
+export const stripe = null as unknown
+
+/*
+// Original Stripe code - to be re-enabled when payments are needed
 import Stripe from "stripe"
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY
 
-// Make Stripe optional for development
-export const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {
-  apiVersion: "2025-05-28.basil",
-  appInfo: {
-    name: "Mckay's App Template",
-    version: "0.1.0"
-  }
-}) : null
+if (!stripeSecretKey) {
+  console.error("STRIPE_SECRET_KEY is not defined in environment variables")
+}
+
+export const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null
+*/
 
 // Helper to check if Stripe is configured
-export const isStripeConfigured = () => !!stripeSecretKey
+export const isStripeConfigured = () => !!stripe

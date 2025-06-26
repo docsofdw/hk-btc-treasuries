@@ -1,45 +1,56 @@
 "use client"
 
-import { PricingButton } from "@/components/payments/pricing-button"
-import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { Check, CreditCard, Zap } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { SectionWrapper } from "./section-wrapper"
 
-const pricing = [
+interface PricingPlan {
+  id: string
+  name: string
+  price: string
+  billingCycle: string
+  description: string
+  features: string[]
+  buttonText: string
+  paymentLink?: string
+  popular: boolean
+}
+
+const pricingPlans: PricingPlan[] = [
   {
-    name: "Pro Monthly",
+    id: "monthly",
+    name: "Monthly Plan",
     price: "$19",
-    period: "/month",
-    description: "Perfect for growing businesses",
+    billingCycle: "/ month",
+    description: "Perfect for getting started",
     features: [
-      "Unlimited projects",
+      "Up to 3 team members",
+      "100GB storage",
+      "Priority email support",
       "Advanced analytics",
-      "Priority support",
-      "Custom integrations",
-      "API access",
-      "Export data"
+      "API Access"
     ],
-    paymentLink: process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_MONTHLY,
-    icon: CreditCard,
-    highlight: false
+    buttonText: "Coming Soon",
+    popular: false
   },
   {
-    name: "Pro Yearly",
-    price: "$190",
-    period: "/year",
-    description: "Best value - save $38 per year",
+    id: "yearly",
+    name: "Yearly Plan",
+    price: "$199",
+    billingCycle: "/ year",
+    description: "Save 13% with annual billing",
     features: [
-      "Everything in monthly",
-      "2 months free",
-      "Early access to features",
-      "Custom onboarding",
-      "Dedicated account manager",
-      "99.9% uptime SLA"
+      "Unlimited team members",
+      "500GB storage",
+      "24/7 phone & email support",
+      "Advanced analytics & reporting",
+      "Priority API Access",
+      "Custom integrations",
+      "Dedicated account manager"
     ],
-    paymentLink: process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_YEARLY,
-    icon: Zap,
-    highlight: true
+    buttonText: "Coming Soon",
+    popular: true
   }
 ]
 
@@ -69,11 +80,11 @@ export function PricingSection() {
         </div>
 
         <div className="mx-auto mt-16 grid max-w-lg grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-2">
-          {pricing.map((tier, index) => (
+          {pricingPlans.map((tier, index) => (
             <motion.div
               key={tier.name}
               className={`relative rounded-3xl p-8 ring-1 ${
-                tier.highlight
+                tier.popular
                   ? "bg-primary text-primary-foreground ring-primary"
                   : "bg-card text-card-foreground ring-border"
               }`}
@@ -85,7 +96,7 @@ export function PricingSection() {
                 delay: index * 0.1
               }}
             >
-              {tier.highlight && (
+              {tier.popular && (
                 <motion.div
                   className="absolute -top-4 left-1/2 -translate-x-1/2"
                   initial={{ opacity: 0, scale: 0.8 }}
@@ -100,14 +111,14 @@ export function PricingSection() {
               )}
 
               <div className="flex items-center gap-4">
-                <tier.icon
+                <CreditCard
                   className={`h-8 w-8 ${
-                    tier.highlight ? "text-primary-foreground" : "text-primary"
+                    tier.popular ? "text-primary-foreground" : "text-primary"
                   }`}
                 />
                 <h3
                   className={`text-lg leading-8 font-semibold ${
-                    tier.highlight
+                    tier.popular
                       ? "text-primary-foreground"
                       : "text-foreground"
                   }`}
@@ -118,7 +129,7 @@ export function PricingSection() {
 
               <p
                 className={`mt-4 text-sm leading-6 ${
-                  tier.highlight
+                  tier.popular
                     ? "text-primary-foreground/80"
                     : "text-muted-foreground"
                 }`}
@@ -129,7 +140,7 @@ export function PricingSection() {
               <p className="mt-6 flex items-baseline gap-x-1">
                 <span
                   className={`text-4xl font-bold tracking-tight ${
-                    tier.highlight
+                    tier.popular
                       ? "text-primary-foreground"
                       : "text-foreground"
                   }`}
@@ -138,18 +149,18 @@ export function PricingSection() {
                 </span>
                 <span
                   className={`text-sm leading-6 font-semibold ${
-                    tier.highlight
+                    tier.popular
                       ? "text-primary-foreground/80"
                       : "text-muted-foreground"
                   }`}
                 >
-                  {tier.period}
+                  {tier.billingCycle}
                 </span>
               </p>
 
               <ul
                 className={`mt-8 space-y-3 text-sm leading-6 ${
-                  tier.highlight
+                  tier.popular
                     ? "text-primary-foreground/80"
                     : "text-muted-foreground"
                 }`}
@@ -158,7 +169,7 @@ export function PricingSection() {
                   <li key={feature} className="flex gap-x-3">
                     <Check
                       className={`h-6 w-5 flex-none ${
-                        tier.highlight
+                        tier.popular
                           ? "text-primary-foreground"
                           : "text-primary"
                       }`}
@@ -169,31 +180,17 @@ export function PricingSection() {
                 ))}
               </ul>
 
-              {tier.paymentLink ? (
-                <PricingButton
-                  paymentLink={tier.paymentLink}
-                  className={`mt-8 w-full ${
-                    tier.highlight
-                      ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                      : ""
-                  }`}
-                  variant={tier.highlight ? "default" : "outline"}
-                >
-                  Get started
-                </PricingButton>
-              ) : (
-                <Button
-                  className={`mt-8 w-full ${
-                    tier.highlight
-                      ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                      : ""
-                  }`}
-                  variant={tier.highlight ? "default" : "outline"}
-                  disabled
-                >
-                  Configure payment link
-                </Button>
-              )}
+              <Button
+                className={`mt-8 w-full ${
+                  tier.popular
+                    ? "bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                    : ""
+                }`}
+                variant={tier.popular ? "default" : "outline"}
+                disabled
+              >
+                {tier.buttonText}
+              </Button>
             </motion.div>
           ))}
         </div>
