@@ -7,7 +7,7 @@ import {
   updateCustomerByUserId
 } from "@/actions/customers"
 import { SelectCustomer } from "@/db/schema/customers"
-import { stripe } from "@/lib/stripe"
+import { stripe, isStripeConfigured } from "@/lib/stripe"
 import { auth } from "@clerk/nextjs/server"
 import Stripe from "stripe"
 
@@ -34,6 +34,9 @@ const getMembershipStatus = (
 }
 
 const getSubscription = async (subscriptionId: string) => {
+  if (!stripe) {
+    throw new Error("Stripe is not configured")
+  }
   return stripe.subscriptions.retrieve(subscriptionId, {
     expand: ["default_payment_method"]
   })
@@ -45,6 +48,10 @@ export const updateStripeCustomer = async (
   customerId: string
 ) => {
   try {
+    if (!isStripeConfigured()) {
+      throw new Error("Stripe is not configured")
+    }
+    
     if (!userId || !subscriptionId || !customerId) {
       throw new Error("Missing required parameters for updateStripeCustomer")
     }
@@ -94,6 +101,10 @@ export const manageSubscriptionStatusChange = async (
   productId: string
 ): Promise<MembershipStatus> => {
   try {
+    if (!isStripeConfigured()) {
+      throw new Error("Stripe is not configured")
+    }
+    
     if (!subscriptionId || !customerId || !productId) {
       throw new Error(
         "Missing required parameters for manageSubscriptionStatusChange"
@@ -101,7 +112,7 @@ export const manageSubscriptionStatusChange = async (
     }
 
     const subscription = await getSubscription(subscriptionId)
-    const product = await stripe.products.retrieve(productId)
+    const product = await stripe!.products.retrieve(productId)
 
     const membership = product.metadata?.membership
 
