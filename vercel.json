@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/fetch-treasuries",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/fetch-prices",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+} 
