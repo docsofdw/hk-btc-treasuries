@@ -77,9 +77,9 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
         header: 'BTC Holdings',
         accessorKey: 'btc',
         cell: ({ getValue }) => (
-          <span className="font-medium">
+          <div className="font-medium">
             {numeral(getValue() as number).format('0,0.0000')}
-          </span>
+          </div>
         ),
       },
       {
@@ -183,7 +183,7 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-brand-dark">
+            <thead className="bg-gray-900">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (

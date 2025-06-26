@@ -1,50 +1,46 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
-export async function GET(request: Request) {
-  // Verify this is a Vercel cron job request
+export async function GET(request: NextRequest) {
+  // Verify cron secret
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response('Unauthorized', { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    // Fetch current Bitcoin price
-    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+    const response = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,hkd'
+    );
+    
     if (!response.ok) {
-      throw new Error('Failed to fetch BTC price');
+      throw new Error('Failed to fetch prices');
     }
-    
+
     const data = await response.json();
-    const btcPrice = data.bitcoin?.usd;
-    
-    if (!btcPrice) {
-      throw new Error('Invalid price data');
-    }
-    
+    const btcUsd = data.bitcoin?.usd || 0;
+    const hkdUsd = 7.8; // Fixed rate for now, or use data.bitcoin?.hkd if available
+
     // Store in Supabase
     const supabase = await createClient();
     const { error } = await supabase
-      .from('price_history')
+      .from('price_snapshots')
       .insert({
-        asset: 'BTC',
-        price_usd: btcPrice,
-        timestamp: new Date().toISOString()
+        btc_usd: btcUsd,
+        hkd_usd: hkdUsd,
       });
-    
-    if (error) {
-      throw error;
-    }
-    
+
+    if (error) throw error;
+
     return NextResponse.json({ 
       success: true, 
-      price: btcPrice,
-      timestamp: new Date().toISOString()
+      btc_usd: btcUsd,
+      timestamp: new Date().toISOString() 
     });
   } catch (error) {
-    console.error('Error fetching BTC price:', error);
+    console.error('Price fetch error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch price' },
+      { error: 'Failed to fetch prices' }, 
       { status: 500 }
     );
   }

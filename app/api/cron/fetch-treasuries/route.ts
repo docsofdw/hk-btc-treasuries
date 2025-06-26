@@ -1,40 +1,40 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Verify cron secret
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    // For MVP, just ensure we have fresh data
     const supabase = await createClient();
     
-    // Check if we have recent data
-    const { data: latestExport } = await supabase
-      .from('raw_exports')
-      .select('downloaded_at')
-      .order('downloaded_at', { ascending: false })
-      .limit(1)
-      .single();
-    
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    
-    if (!latestExport || new Date(latestExport.downloaded_at) < oneHourAgo) {
-      // Trigger edge function
-      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/fetch-export`, {
+    // Trigger the edge function to refresh data
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/fetch-export`,
+      {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
         },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to trigger edge function');
       }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to trigger edge function');
     }
-    
-    return NextResponse.json({ success: true });
+
+    return NextResponse.json({ 
+      success: true, 
+      timestamp: new Date().toISOString() 
+    });
   } catch (error) {
-    console.error('Error in fetch-treasuries cron:', error);
+    console.error('Cron error:', error);
     return NextResponse.json(
-      { error: 'Failed to check/fetch data' },
+      { error: 'Failed to fetch treasuries' }, 
       { status: 500 }
     );
   }
