@@ -7,13 +7,22 @@ export const revalidate = 3600; // 1 hour cache
 
 const EXPORT_URL = process.env.BITCOINTREASURIES_EXPORT_URL || '';
 
+// Define types for CSV row data
+interface CSVRow {
+  Company?: string;
+  Ticker?: string;
+  'BTC Holdings'?: string;
+  'USD Value'?: string;
+  'Last Update'?: string;
+}
+
 export async function GET() {
   try {
     // Try to get cached data from Supabase first
     const supabase = await createClient();
     const { data: cachedData } = await supabase
       .from('raw_exports')
-      .select('data')
+      .select('data, downloaded_at')
       .order('downloaded_at', { ascending: false })
       .limit(1)
       .single();
@@ -38,7 +47,7 @@ export async function GET() {
     });
 
     // Filter for HK/China entities
-    const filteredData = records.filter((row: any) => {
+    const filteredData = records.filter((row: CSVRow) => {
       const ticker = row.Ticker || '';
       const company = row.Company || '';
       return (
@@ -51,12 +60,12 @@ export async function GET() {
     });
 
     // Transform to our format
-    const entities = filteredData.map((row: any, index: number) => ({
+    const entities = filteredData.map((row: CSVRow, index: number) => ({
       id: `export-${index}`,
       legalName: row.Company,
       ticker: row.Ticker,
-      listingVenue: determineVenue(row.Ticker),
-      hq: determineHQ(row.Company, row.Ticker),
+      listingVenue: determineVenue(row.Ticker || ''),
+      hq: determineHQ(row.Company || '', row.Ticker || ''),
       btc: parseFloat(row['BTC Holdings']?.replace(/,/g, '') || '0'),
       costBasisUsd: parseFloat(row['USD Value']?.replace(/[$,]/g, '') || '0'),
       lastDisclosed: row['Last Update'] || new Date().toISOString(),
