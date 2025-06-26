@@ -23,6 +23,10 @@ export async function POST(req: Request) {
       throw new Error("Webhook secret or signature missing")
     }
 
+    if (!stripe) {
+      throw new Error("Stripe is not configured")
+    }
+
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
   } catch (err) {
     console.error(
@@ -95,6 +99,10 @@ async function handleCheckoutSession(event: Stripe.Event) {
     }
 
     await updateStripeCustomer(clientReferenceId, subscriptionId, customerId)
+
+    if (!stripe) {
+      throw new Error("Stripe is not configured")
+    }
 
     const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
       expand: ["default_payment_method"]

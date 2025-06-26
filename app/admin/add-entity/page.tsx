@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { TreasuryManager } from '@/lib/services/treasury-manager'
 
+export const dynamic = 'force-dynamic'
+
 export default function AddEntityPage() {
   const [formData, setFormData] = useState({
     ticker: '',

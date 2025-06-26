@@ -41,23 +41,30 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-            <TooltipProvider>
-              {children}
-              <CheckoutRedirect />
+  const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
-              <TailwindIndicator />
-              <Toaster />
-            </TooltipProvider>
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+  const content = (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          <TooltipProvider>
+            {children}
+            <CheckoutRedirect />
+
+            <TailwindIndicator />
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
+      </body>
+    </html>
   )
+
+  // Only wrap with ClerkProvider if the key is available
+  if (clerkPublishableKey) {
+    return <ClerkProvider>{content}</ClerkProvider>
+  }
+
+  return content
 }
