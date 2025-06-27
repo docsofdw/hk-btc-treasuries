@@ -33,11 +33,11 @@ export function Header({ userMembership }: HeaderProps) {
       <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
         <nav
           className="mx-auto flex max-w-7xl items-center justify-between p-4 lg:px-8"
-          aria-label="Global"
+          aria-label="Main navigation"
         >
           <div className="flex lg:flex-1">
             <Link href="/" className="-m-1.5 p-1.5">
-              <span className="text-xl font-bold">Mckay's App Template</span>
+              <span className="text-xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">Asia's Bitcoin Treasuries</span>
             </Link>
           </div>
           <div className="flex lg:hidden">
@@ -122,7 +122,7 @@ export function Header({ userMembership }: HeaderProps) {
                 className="-m-1.5 p-1.5"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <span className="text-xl font-bold">Takeoff</span>
+                <span className="text-xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">Asia's Bitcoin Treasuries</span>
               </Link>
               <button
                 type="button"

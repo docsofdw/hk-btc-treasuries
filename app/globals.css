@@ -143,3 +143,88 @@
     font-family: var(--font-geist-sans), system-ui, sans-serif;
   }
 }
+
+@layer utilities {
+  /* All the base reset CSS above... */
+  
+  /* Screenshot mode styles */
+  .screenshot-mode {
+    @apply !bg-white;
+  }
+  
+  .screenshot-mode * {
+    @apply !transition-none;
+  }
+  
+  .screenshot-mode .sticky {
+    @apply !relative;
+  }
+  
+  .screenshot-mode table {
+    @apply !border !border-gray-200 !rounded-lg !overflow-hidden;
+  }
+  
+  .screenshot-mode thead {
+    @apply !bg-gray-50;
+  }
+  
+  .screenshot-mode tbody tr {
+    @apply !border-b !border-gray-100;
+  }
+  
+  .screenshot-mode tbody tr:last-child {
+    @apply !border-b-0;
+  }
+  
+  /* Watermark styles */
+  .screenshot-watermark {
+    @apply absolute bottom-4 right-4 text-sm text-gray-500 font-medium;
+  }
+
+  /* High specificity search input styles */
+  .isolated-search-container {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .treasury-search-input,
+  .treasury-search-input:focus,
+  .treasury-search-input:hover,
+  .treasury-search-input:active,
+  .treasury-search-input:focus-visible {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
+    box-shadow: none !important;
+  }
+
+  .treasury-search-input:focus,
+  .treasury-search-input:focus-visible {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+    outline: none !important;
+  }
+
+  .treasury-search-input::placeholder {
+    color: #6b7280 !important;
+    opacity: 1 !important;
+  }
+
+  /* Clear button styling */
+  .isolated-search-container button {
+    background: none !important;
+    border: none !important;
+    cursor: pointer !important;
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}

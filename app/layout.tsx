@@ -19,20 +19,20 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Hong Kong & China Bitcoin Treasuries | BTC Holdings Tracker',
+  title: "Asia's Bitcoin Treasuries | BTC Holdings Tracker",
   description: 'Real-time tracking of Bitcoin holdings by Hong Kong-listed and China-headquartered public companies. Verified data from official filings.',
-  keywords: 'bitcoin, btc, treasury, hong kong, china, cryptocurrency, holdings',
+  keywords: 'bitcoin, btc, treasury, hong kong, china, asia, cryptocurrency, holdings',
   openGraph: {
-    title: 'HK/China Bitcoin Treasuries Tracker',
-    description: 'Track Bitcoin holdings of Hong Kong and Chinese public companies',
+    title: "Asia's Bitcoin Treasuries Tracker",
+    description: 'Track Bitcoin holdings of Asian public companies',
     type: 'website',
     locale: 'en_US',
     url: 'https://hkbtc.vercel.app',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'HK/China Bitcoin Treasuries',
-    description: 'Real-time BTC holdings tracker for Hong Kong & Chinese companies',
+    title: "Asia's Bitcoin Treasuries",
+    description: 'Real-time BTC holdings tracker for Asian companies',
   },
 }
 
