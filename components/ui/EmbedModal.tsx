@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface EmbedModalProps {
   isOpen: boolean;
@@ -11,8 +12,10 @@ interface EmbedModalProps {
 export default function EmbedModal({ isOpen, onClose, siteUrl }: EmbedModalProps) {
   const [width, setWidth] = useState('100%');
   const [height, setHeight] = useState('600');
+  const [theme, setTheme] = useState('light');
   
-  const embedCode = `<iframe src="${siteUrl}" width="${width}" height="${height}" frameborder="0" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);"></iframe>`;
+  const embedUrl = `${siteUrl}?region=hk-cn&theme=${theme}`;
+  const embedCode = `<iframe src="${embedUrl}" width="${width}" height="${height}" frameborder="0" style="border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);"></iframe>`;
   
   const [copied, setCopied] = useState(false);
   
@@ -20,6 +23,7 @@ export default function EmbedModal({ isOpen, onClose, siteUrl }: EmbedModalProps
     navigator.clipboard.writeText(embedCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    toast.success('Embed code copied to clipboard!');
   };
   
   if (!isOpen) return null;
@@ -40,26 +44,54 @@ export default function EmbedModal({ isOpen, onClose, siteUrl }: EmbedModalProps
         </div>
         
         <div className="space-y-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Width</label>
-            <input
-              type="text"
-              value={width}
-              onChange={(e) => setWidth(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
-              placeholder="100% or 800"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Width</label>
+              <input
+                type="text"
+                value={width}
+                onChange={(e) => setWidth(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
+                placeholder="100% or 800"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Height (px)</label>
+              <input
+                type="text"
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
+                placeholder="600"
+              />
+            </div>
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">Height (px)</label>
-            <input
-              type="text"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand"
-              placeholder="600"
-            />
+            <label className="block text-sm font-medium mb-1">Theme</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTheme('light')}
+                className={`flex-1 px-3 py-2 rounded border ${
+                  theme === 'light' 
+                    ? 'bg-brand text-white border-brand' 
+                    : 'bg-white text-gray-700 border-gray-300'
+                }`}
+              >
+                Light
+              </button>
+              <button
+                onClick={() => setTheme('dark')}
+                className={`flex-1 px-3 py-2 rounded border ${
+                  theme === 'dark' 
+                    ? 'bg-brand text-white border-brand' 
+                    : 'bg-white text-gray-700 border-gray-300'
+                }`}
+              >
+                Dark
+              </button>
+            </div>
           </div>
         </div>
         
@@ -84,7 +116,7 @@ export default function EmbedModal({ isOpen, onClose, siteUrl }: EmbedModalProps
           <p className="text-sm text-gray-600 mb-2">Preview:</p>
           <div className="border border-gray-300 rounded overflow-hidden" style={{ height: '200px' }}>
             <iframe 
-              src={siteUrl} 
+              src={embedUrl} 
               width="100%" 
               height="100%" 
               frameBorder="0"

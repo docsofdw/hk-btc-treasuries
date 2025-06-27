@@ -11,6 +11,8 @@ export interface TreasuryEntity {
   dataSource?: 'export' | 'filing' | 'manual';
   region?: 'HK' | 'China' | 'ADR';
   verified?: boolean;
+  marketCap?: number;
+  sharesOutstanding?: number;
 }
 
 export interface ExportRow {

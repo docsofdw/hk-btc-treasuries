@@ -1,29 +1,47 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  getFilteredRowModel,
   SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { useState } from 'react';
 import dayjs from 'dayjs';
 import numeral from 'numeral';
 import { TreasuryEntity } from '@/types/treasury';
 import { getOfficialExchangeUrl } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Info, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { useDebounce } from '@/hooks/use-debounce';
 
 interface TreasuryTableProps {
   data: TreasuryEntity[];
   btcPrice?: number;
 }
 
+// Helper function to determine listing type
+function getListingType(ticker: string, exchange: string): { label: string; className: string } {
+  if (ticker.endsWith('.HK')) {
+    return { label: 'HKEX', className: 'bg-emerald-600/10 text-emerald-700' };
+  } else if (exchange === 'NASDAQ' || exchange === 'NYSE') {
+    return { label: 'ADR', className: 'bg-indigo-600/10 text-indigo-700' };
+  } else if (exchange === 'SZSE') {
+    return { label: 'SZSE', className: 'bg-orange-600/10 text-orange-700' };
+  }
+  return { label: 'Other', className: 'bg-gray-600/10 text-gray-700' };
+}
+
 export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'btc', desc: true }
   ]);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const debouncedFilter = useDebounce(globalFilter, 300);
 
   const columns = useMemo<ColumnDef<TreasuryEntity>[]>(
     () => [
@@ -41,15 +59,35 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
         accessorKey: 'legalName',
         cell: ({ row }) => (
           <div className="space-y-1">
-            <a
-              href={getOfficialExchangeUrl(row.original.ticker, row.original.listingVenue)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-brand hover:text-brand-light transition-colors block"
-              title={`View ${row.original.legalName} on ${row.original.listingVenue}`}
-            >
-              {row.original.legalName}
-            </a>
+            <div className="flex items-center gap-1">
+              <a
+                href={getOfficialExchangeUrl(row.original.ticker, row.original.listingVenue)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-brand hover:text-brand-light transition-colors"
+                title={`View ${row.original.legalName} on ${row.original.listingVenue}`}
+              >
+                {row.original.legalName}
+              </a>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="bg-gray-900 text-white">
+                  <div className="space-y-1 text-xs">
+                    <div>
+                      <span className="text-gray-400">Primary listing:</span> {row.original.listingVenue}
+                      {row.original.ticker.endsWith('.HK') ? ' (HKEX)' : ' (ADR)'}
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Headquarters:</span> {row.original.hq}
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <span>{row.original.ticker}</span>
               <span className="text-gray-400">•</span>
@@ -57,6 +95,20 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
             </div>
           </div>
         ),
+      },
+      {
+        header: 'Listing',
+        id: 'listingType',
+        size: 80,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const { label, className } = getListingType(row.original.ticker, row.original.listingVenue);
+          return (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${className}`}>
+              {label}
+            </span>
+          );
+        },
       },
       {
         header: 'Ticker',
@@ -154,13 +206,28 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
                 href={row.original.source}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium hover:bg-blue-200 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium hover:bg-yellow-200 transition-colors"
                 title="View filing (pending verification)"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Filing
+                Pending
+              </a>
+            );
+          } else if (row.original.dataSource === 'export') {
+            return (
+              <a
+                href={row.original.source}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium hover:bg-gray-200 transition-colors"
+                title="Data from BTCTreasuries.net"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Auto
               </a>
             );
           } else if (row.original.source) {
@@ -198,10 +265,16 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
   const table = useReactTable({
     data,
     columns,
-    state: { sorting },
+    state: { 
+      sorting,
+      globalFilter: debouncedFilter,
+    },
     onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: 'includesString',
   });
 
   const totals = useMemo(() => {
@@ -236,6 +309,22 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
           <div className="text-2xl font-bold text-orange-600">
             {numeral(btcPrice).format('$0,0')}
           </div>
+        </div>
+      </div>
+
+      {/* Search and Table Controls */}
+      <div className="mb-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="relative w-full sm:w-96">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search companies, tickers, or locations..."
+            value={globalFilter ?? ''}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="pl-10 pr-4 py-2 w-full"
+          />
+        </div>
+        <div className="text-sm text-gray-500">
+          Showing {table.getFilteredRowModel().rows.length} of {data.length} companies
         </div>
       </div>
 

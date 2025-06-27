@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "app/api/cron/update-market-caps/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/cron/update-market-data/route.ts": {
+      "maxDuration": 300
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/fetch-treasuries",
@@ -7,6 +15,14 @@
     {
       "path": "/api/cron/fetch-prices",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/update-market-caps",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/update-market-data",
+      "schedule": "0 6 * * *"
     }
   ]
 } 

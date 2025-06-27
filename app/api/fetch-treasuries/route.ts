@@ -15,19 +15,32 @@ export async function GET() {
       .order('btc', { ascending: false });
     
     if (snapshotData && snapshotData.length > 0) {
+      console.log('Available fields in latest_snapshot:', Object.keys(snapshotData[0] || {}));
+      
+      // Get cost basis data from holdings_snapshots since it might not be in the view
+      const { data: holdingsData } = await supabase
+        .from('holdings_snapshots')
+        .select('entity_id, cost_basis_usd');
+      
+      const costBasisMap = new Map(
+        holdingsData?.map(h => [h.entity_id, h.cost_basis_usd]) || []
+      );
+      
       const entities = snapshotData.map(row => ({
         id: row.id,
         legalName: row.legal_name,
         ticker: row.ticker,
         listingVenue: row.listing_venue,
         hq: row.hq,
-        btc: parseFloat(row.btc),
+        btc: row.btc ? parseFloat(row.btc) : 0,
         costBasisUsd: row.cost_basis_usd ? parseFloat(row.cost_basis_usd) : null,
         lastDisclosed: row.last_disclosed,
         source: row.source_url,
         dataSource: row.data_quality,
         verified: row.verified,
-        region: row.region
+        region: row.region,
+        marketCap: row.market_cap ? parseFloat(row.market_cap) : null,
+        sharesOutstanding: row.shares_outstanding ? parseFloat(row.shares_outstanding) : null
       }));
       
       return NextResponse.json({ 

@@ -1,13 +1,11 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
+import * as cheerio from 'cheerio';
 
 export class HKEXParser {
   private supabase: SupabaseClient;
   
-  constructor() {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+  constructor(supabaseClient: SupabaseClient) {
+    this.supabase = supabaseClient;
   }
   
   async searchFilings(ticker: string, companyName: string) {
@@ -55,20 +53,42 @@ export class HKEXParser {
   }
   
   private extractPDFLinks(html: string): Array<{ url: string; title: string; date: string }> {
-    // Simple regex extraction - in production use cheerio
-    const linkPattern = /<a[^>]+href="([^"]+\.pdf)"[^>]*>([^<]+)<\/a>/gi;
+    const $ = cheerio.load(html);
     const links: Array<{ url: string; title: string; date: string }> = [];
     
-    let match;
-    while ((match = linkPattern.exec(html)) !== null) {
-      links.push({
-        url: `https://www1.hkexnews.hk${match[1]}`,
-        title: match[2].trim(),
-        date: new Date().toISOString() // Extract actual date from HTML
-      });
-    }
+    // HKEX search results typically have PDFs in table rows
+    $('table tr').each((_, row) => {
+      const $row = $(row);
+      const $pdfLink = $row.find('a[href$=".pdf"]');
+      
+      if ($pdfLink.length > 0) {
+        const href = $pdfLink.attr('href');
+        const title = $pdfLink.text().trim();
+        
+        // Try to extract date from the row (usually in a separate td)
+        const dateText = $row.find('td').eq(0).text().trim(); // Adjust based on actual structure
+        
+        if (href) {
+          links.push({
+            url: href.startsWith('http') ? href : `https://www1.hkexnews.hk${href}`,
+            title: title || 'Untitled Document',
+            date: this.parseHKEXDate(dateText) || new Date().toISOString()
+          });
+        }
+      }
+    });
     
     return links;
+  }
+  
+  private parseHKEXDate(dateStr: string): string | null {
+    // HKEX dates are typically in format "DD/MM/YYYY"
+    const match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (match) {
+      const [_, day, month, year] = match;
+      return new Date(`${year}-${month}-${day}`).toISOString();
+    }
+    return null;
   }
   
   async processCompany(ticker: string, entityId: string) {
