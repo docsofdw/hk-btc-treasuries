@@ -24,6 +24,12 @@ interface TreasuryTableProps {
   btcPrice?: number;
 }
 
+// Helper function to check if market data is stale
+function isMarketDataStale(updatedAt: string | null): boolean {
+  if (!updatedAt) return true;
+  return dayjs().diff(dayjs(updatedAt), 'hour') > 48;
+}
+
 // Helper function to determine listing type
 function getListingType(ticker: string, exchange: string): { label: string; className: string } {
   if (ticker.endsWith('.HK')) {
@@ -156,6 +162,38 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
         cell: ({ getValue }) => {
           const value = getValue() as number;
           return value ? numeral(value).format('$0,0') : '—';
+        },
+      },
+      {
+        header: 'Market Cap',
+        accessorKey: 'marketCap',
+        cell: ({ getValue, row }) => {
+          const marketCap = getValue() as number;
+          const updatedAt = row.original.marketDataUpdatedAt ?? null;
+          const isStale = isMarketDataStale(updatedAt);
+          
+          if (!marketCap || isStale) {
+            return (
+              <div className="text-right">
+                <span className="text-gray-400">—</span>
+                {isStale && updatedAt && (
+                  <div className="text-xs text-red-400">Outdated</div>
+                )}
+                {!updatedAt && (
+                  <div className="text-xs text-gray-400">No data</div>
+                )}
+              </div>
+            );
+          }
+          
+          return (
+            <div className="text-right">
+              <div className="text-sm">{numeral(marketCap).format('$0.0a')}</div>
+              <div className="text-xs text-gray-500">
+                {dayjs(updatedAt).fromNow()}
+              </div>
+            </div>
+          );
         },
       },
       {

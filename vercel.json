@@ -9,20 +9,24 @@
   },
   "crons": [
     {
-      "path": "/api/cron/fetch-treasuries",
-      "schedule": "0 * * * *"
+      "path": "/api/cron/fetch-prices",
+      "schedule": "0 */6 * * *"
     },
     {
-      "path": "/api/cron/fetch-prices",
-      "schedule": "*/15 * * * *"
+      "path": "/api/cron/fetch-treasuries",
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/update-market-caps",
-      "schedule": "0 2 * * *"
+      "schedule": "0 9 * * 1-5"
     },
     {
       "path": "/api/cron/update-market-data",
-      "schedule": "0 6 * * *"
+      "schedule": "0 10 * * 1-5"
+    },
+    {
+      "path": "/api/cron/scan-filings",
+      "schedule": "0 */4 * * *"
     }
   ]
 } 

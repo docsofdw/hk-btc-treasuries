@@ -13,6 +13,7 @@ export interface TreasuryEntity {
   verified?: boolean;
   marketCap?: number;
   sharesOutstanding?: number;
+  marketDataUpdatedAt?: string;
 }
 
 export interface ExportRow {
