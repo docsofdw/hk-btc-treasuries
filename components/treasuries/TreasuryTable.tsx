@@ -42,33 +42,18 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
         cell: ({ row }) => (
           <div className="space-y-1">
             <a
-              href={row.original.source}
+              href={getOfficialExchangeUrl(row.original.ticker, row.original.listingVenue)}
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium text-brand hover:text-brand-light transition-colors block"
+              title={`View ${row.original.legalName} on ${row.original.listingVenue}`}
             >
               {row.original.legalName}
             </a>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-500">{row.original.ticker}</span>
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span>{row.original.ticker}</span>
               <span className="text-gray-400">•</span>
-              <span className="text-gray-500">{row.original.hq}</span>
-              {row.original.verified ? (
-                <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Verified
-                </span>
-              ) : row.original.dataSource === 'filing' ? (
-                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
-                  Filing
-                </span>
-              ) : (
-                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
-                  Sourced
-                </span>
-              )}
+              <span>{row.original.hq}</span>
             </div>
           </div>
         ),
@@ -141,6 +126,60 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
               {gain.toFixed(2)}x
             </span>
           );
+        },
+      },
+      {
+        header: 'Filing',
+        id: 'filing',
+        size: 120,
+        cell: ({ row }) => {
+          if (row.original.verified) {
+            return (
+              <a
+                href={row.original.source}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium hover:bg-green-200 transition-colors"
+                title="View verified filing"
+              >
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Verified
+              </a>
+            );
+          } else if (row.original.dataSource === 'filing') {
+            return (
+              <a
+                href={row.original.source}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium hover:bg-blue-200 transition-colors"
+                title="View filing (pending verification)"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Filing
+              </a>
+            );
+          } else if (row.original.source) {
+            return (
+              <a
+                href={row.original.source}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium hover:bg-gray-200 transition-colors"
+                title="View source"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Source
+              </a>
+            );
+          }
+          return <span className="text-gray-400 text-xs">—</span>;
         },
       },
       {

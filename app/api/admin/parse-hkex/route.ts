@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     await parser.processCompany(ticker, entityId);
     
     // Refresh materialized view
-    const supabase = createClient();
+    const supabase = await createClient();
     await supabase.rpc('refresh_latest_snapshot');
     
     return NextResponse.json({ success: true });

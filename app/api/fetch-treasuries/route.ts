@@ -6,7 +6,7 @@ export const revalidate = 300; // 5 minutes
 
 export async function GET() {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // First, try to get data from materialized view
     const { data: snapshotData, error: snapshotError } = await supabase

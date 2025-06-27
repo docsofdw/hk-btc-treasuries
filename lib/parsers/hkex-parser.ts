@@ -1,7 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export class HKEXParser {
-  private supabase: any;
+  private supabase: SupabaseClient;
   
   constructor() {
     this.supabase = createClient(
