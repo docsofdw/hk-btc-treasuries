@@ -13,6 +13,7 @@ import { useState } from 'react';
 import dayjs from 'dayjs';
 import numeral from 'numeral';
 import { TreasuryEntity } from '@/types/treasury';
+import { getOfficialExchangeUrl } from '@/lib/utils';
 
 interface TreasuryTableProps {
   data: TreasuryEntity[];
@@ -37,10 +38,11 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
         cell: ({ row }) => (
           <div>
             <a
-              href={row.original.source}
+              href={getOfficialExchangeUrl(row.original.ticker, row.original.listingVenue)}
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium text-brand hover:text-brand-light transition-colors"
+              title={`View ${row.original.legalName} on ${row.original.listingVenue}`}
             >
               {row.original.legalName}
             </a>
