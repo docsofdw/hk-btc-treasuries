@@ -59,6 +59,10 @@ const EDGAR_ARCHIVES_BASE = 'https://www.sec.gov/Archives/edgar/data';
 const CIK_MAP: Record<string, string> = {
   'NCTY': '0001104657', // The9 Limited
   'CAN': '0001780652',  // Canaan Inc
+  'BTDR': '0001917249', // Bitdeer Technologies
+  'NA': '0001937240',   // Nano Labs Ltd.
+  'BTCM': '0001763912', // BIT Mining Ltd.
+  'EBON': '0001799290', // Ebang International
   'BTBT': '0001717081', // Bit Digital Inc
   'RIOT': '0001167419', // Riot Platforms Inc
   'MARA': '0001507605', // Marathon Digital Holdings

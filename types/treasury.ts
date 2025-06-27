@@ -8,6 +8,7 @@ export interface TreasuryEntity {
   costBasisUsd: number;
   lastDisclosed: string;
   source: string;
+  interestUrl?: string; // For prospects: press releases, blog posts, etc.
   dataSource?: 'export' | 'filing' | 'manual';
   region?: 'HK' | 'China' | 'ADR';
   verified?: boolean;
