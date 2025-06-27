@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
+import { toast } from 'sonner';
 import TreasuryTable from '@/components/treasuries/TreasuryTable';
 import EmbedModal from '@/components/ui/EmbedModal';
 import { TreasuryEntity } from '@/types/treasury';
@@ -11,6 +12,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 export default function HomePage() {
   const [btcPrice, setBtcPrice] = useState(107038);
   const [showEmbedModal, setShowEmbedModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const { data, error, isLoading, mutate } = useSWR<{ entities: TreasuryEntity[] }>(
     '/api/fetch-treasuries',
@@ -34,6 +36,18 @@ export default function HomePage() {
 
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await mutate();
+      toast.success('Data refreshed successfully!');
+    } catch (error) {
+      toast.error('Failed to refresh data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -45,13 +59,19 @@ export default function HomePage() {
             </h1>
             <div className="flex gap-2">
               <button
-                onClick={() => mutate()}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg 
+                  className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Refresh
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
               </button>
               <button
                 onClick={() => setShowEmbedModal(true)}
@@ -117,7 +137,7 @@ export default function HomePage() {
             </p>
             <div className="flex items-center justify-center space-x-6">
               <a
-                href="https://github.com/YOUR_USERNAME/hk-btc-treasuries"
+                href="https://github.com/duke/hk-btc-treasuries"
                 className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"

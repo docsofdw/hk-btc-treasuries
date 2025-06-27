@@ -31,6 +31,10 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
         header: '#',
         accessorFn: (_row, i) => i + 1,
         size: 50,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="text-gray-500 font-medium">{row.index + 1}</span>
+        ),
       },
       {
         header: 'Company',
@@ -156,7 +160,7 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="text-sm text-gray-600">Total Companies</div>
           <div className="text-2xl font-bold text-brand">{data.length}</div>
@@ -230,8 +234,19 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
         <p>
           * Data sourced from public filings and BitcoinTreasuries.net
           {' · '}
-          <span className="text-orange-600">
-            {data.filter(d => d.dataSource === 'filing').length} verified from filings
+          <span className="inline-flex items-center gap-1">
+            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
+              {data.filter(d => d.dataSource === 'filing').length} / {data.length} verified
+            </span>
+            <a
+              href="https://github.com/duke/hk-btc-treasuries/issues/new?template=add-filing.md&title=Add%20Filing%20for%20[Company]"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand hover:text-brand-dark transition-colors"
+              title="Help add more verified filings"
+            >
+              Help add filings ›
+            </a>
           </span>
         </p>
       </div>
