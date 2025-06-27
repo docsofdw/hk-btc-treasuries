@@ -10,6 +10,7 @@ export interface TreasuryEntity {
   source: string;
   dataSource?: 'export' | 'filing' | 'manual';
   region?: 'HK' | 'China' | 'ADR';
+  verified?: boolean;
 }
 
 export interface ExportRow {

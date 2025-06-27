@@ -1,0 +1,29 @@
+name: Update Treasury Data
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Every hour
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Trigger Supabase Edge Function
+        run: |
+          curl -X POST ${{ secrets.SUPABASE_URL }}/functions/v1/fetch-export \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json"
+            
+      - name: Refresh Materialized View
+        run: |
+          curl -X POST ${{ secrets.SUPABASE_URL }}/rest/v1/rpc/refresh_latest_snapshot \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" 

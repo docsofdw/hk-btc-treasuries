@@ -40,21 +40,36 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
         header: 'Company',
         accessorKey: 'legalName',
         cell: ({ row }) => (
-          <div>
+          <div className="space-y-1">
             <a
-              href={getOfficialExchangeUrl(row.original.ticker, row.original.listingVenue)}
+              href={row.original.source}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-brand hover:text-brand-light transition-colors"
-              title={`View ${row.original.legalName} on ${row.original.listingVenue}`}
+              className="font-medium text-brand hover:text-brand-light transition-colors block"
             >
               {row.original.legalName}
             </a>
-            {row.original.dataSource === 'filing' && (
-              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                Verified
-              </span>
-            )}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-gray-500">{row.original.ticker}</span>
+              <span className="text-gray-400">•</span>
+              <span className="text-gray-500">{row.original.hq}</span>
+              {row.original.verified ? (
+                <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Verified
+                </span>
+              ) : row.original.dataSource === 'filing' ? (
+                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
+                  Filing
+                </span>
+              ) : (
+                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
+                  Sourced
+                </span>
+              )}
+            </div>
           </div>
         ),
       },
@@ -230,23 +245,16 @@ export default function TreasuryTable({ data, btcPrice = 107000 }: TreasuryTable
       </div>
 
       {/* Footer */}
-      <div className="text-center text-sm text-gray-500">
+      <div className="text-center text-sm text-gray-500 mt-4">
         <p>
           * Data sourced from public filings and BitcoinTreasuries.net
           {' · '}
-          <span className="inline-flex items-center gap-1">
-            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-              {data.filter(d => d.dataSource === 'filing').length} / {data.length} verified
-            </span>
-            <a
-              href="https://github.com/duke/hk-btc-treasuries/issues/new?template=add-filing.md&title=Add%20Filing%20for%20[Company]"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-brand hover:text-brand-dark transition-colors"
-              title="Help add more verified filings"
-            >
-              Help add filings ›
-            </a>
+          <span className="text-green-600 font-medium">
+            {data.filter(d => d.verified).length} verified from official filings
+          </span>
+          {' · '}
+          <span className="text-blue-600">
+            {data.filter(d => d.dataSource === 'filing' && !d.verified).length} pending verification
           </span>
         </p>
       </div>

@@ -1,50 +1,80 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { TreasuryManager } from '@/lib/services/treasury-manager';
 
 export const runtime = 'edge';
-export const revalidate = 3600; // 1 hour cache
+export const revalidate = 300; // 5 minutes
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const manager = new TreasuryManager(supabase);
+    const supabase = createClient();
     
-    // First, check if we have any entities at all
-    const entities = await manager.getAllEntities();
+    // First, try to get data from materialized view
+    const { data: snapshotData, error: snapshotError } = await supabase
+      .from('latest_snapshot')
+      .select('*')
+      .order('btc', { ascending: false });
     
-    if (!entities || entities.length === 0) {
-      // If no entities, trigger the edge function to seed data
-      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/fetch-export`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-      });
+    if (snapshotData && snapshotData.length > 0) {
+      const entities = snapshotData.map(row => ({
+        id: row.id,
+        legalName: row.legal_name,
+        ticker: row.ticker,
+        listingVenue: row.listing_venue,
+        hq: row.hq,
+        btc: parseFloat(row.btc),
+        costBasisUsd: row.cost_basis_usd ? parseFloat(row.cost_basis_usd) : null,
+        lastDisclosed: row.last_disclosed,
+        source: row.source_url,
+        dataSource: row.data_quality,
+        verified: row.verified,
+        region: row.region
+      }));
       
-      if (response.ok) {
-        // Try getting entities again after seeding
-        const seededEntities = await manager.getAllEntities();
-        return NextResponse.json({ entities: seededEntities || [] }, {
-          headers: {
-            'Cache-Control': 's-maxage=3600, stale-while-revalidate',
-          },
-        });
-      }
+      return NextResponse.json({ 
+        entities,
+        metadata: {
+          total: entities.length,
+          verified: entities.filter(e => e.verified).length,
+          lastUpdated: new Date().toISOString()
+        }
+      });
     }
     
-    return NextResponse.json({ entities: entities || [] }, {
-      headers: {
-        'Cache-Control': 's-maxage=3600, stale-while-revalidate',
-      },
+    // Fallback to regular tables if view is empty
+    const { data: holdings } = await supabase
+      .from('holdings_snapshots')
+      .select(`
+        *,
+        entities!inner(*)
+      `)
+      .order('btc', { ascending: false });
+    
+    const entities = holdings?.map(holding => ({
+      id: holding.entity_id,
+      legalName: holding.entities.legal_name,
+      ticker: holding.entities.ticker,
+      listingVenue: holding.entities.listing_venue,
+      hq: holding.entities.hq,
+      btc: parseFloat(holding.btc),
+      costBasisUsd: holding.cost_basis_usd ? parseFloat(holding.cost_basis_usd) : null,
+      lastDisclosed: holding.last_disclosed,
+      source: holding.source_url,
+      dataSource: holding.data_source,
+      verified: false,
+      region: holding.entities.region
+    })) || [];
+    
+    return NextResponse.json({ 
+      entities,
+      metadata: {
+        total: entities.length,
+        verified: 0,
+        lastUpdated: new Date().toISOString()
+      }
     });
+    
   } catch (error) {
     console.error('Error fetching treasuries:', error);
-    
-    // Return empty array instead of error to prevent UI from breaking
-    return NextResponse.json(
-      { entities: [] },
-      { status: 200 }
-    );
+    return NextResponse.json({ entities: [], error: 'Failed to fetch data' });
   }
 } 
