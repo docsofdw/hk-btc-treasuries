@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { getHKEXAnnouncementsUrl } from '@/lib/utils';
 
 dayjs.extend(relativeTime);
 
@@ -193,9 +194,20 @@ export default function RecentFilings() {
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                        <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
-                          {filing.company}
-                        </h3>
+                        {filing.exchange === 'HKEX' ? (
+                          <a
+                            href={getHKEXAnnouncementsUrl(filing.ticker)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-semibold text-gray-900 text-sm sm:text-base truncate hover:text-blue-600 transition-colors"
+                          >
+                            {filing.company}
+                          </a>
+                        ) : (
+                          <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
+                            {filing.company}
+                          </h3>
+                        )}
                         <span className="text-xs sm:text-sm text-gray-500">
                           ({filing.ticker})
                         </span>

@@ -13,7 +13,7 @@ import {
 import dayjs from 'dayjs';
 import numeral from 'numeral';
 import { TreasuryEntity } from '@/types/treasury';
-import { getOfficialExchangeUrl } from '@/lib/utils';
+import { getOfficialExchangeUrl, getHKEXAnnouncementsUrl } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -195,6 +195,21 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
               <ExternalLink className="h-4 w-4" />
             </a>
           </div>
+          
+          {/* Add HKEX Announcements link for Hong Kong companies */}
+          {entity.listingVenue === 'HKEX' && (
+            <div className="pt-1 mt-1 border-t border-gray-100">
+              <a
+                href={getHKEXAnnouncementsUrl(entity.ticker)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 rounded-full text-xs font-medium hover:bg-red-100 transition-colors"
+                title={`View HKEX announcements${entity.ticker ? ` (Stock: ${entity.ticker.replace('.HK', '').padStart(5, '0')})` : ''}`}
+              >
+                HKEX News
+              </a>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -422,6 +437,36 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           );
         },
       },
+      {
+        id: 'announcements',
+        header: 'Announcements',
+        enableSorting: false,
+        cell: ({ row }) => {
+          const { ticker, listingVenue } = row.original;
+          
+          if (listingVenue === 'HKEX') {
+            return (
+              <div className="text-center">
+                <a
+                  href={getHKEXAnnouncementsUrl(ticker)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 rounded-full text-xs font-medium hover:bg-red-100 transition-colors"
+                  title={`View HKEX announcements${ticker ? ` (Stock: ${ticker.replace('.HK', '').padStart(5, '0')})` : ''}`}
+                >
+                  HKEX News
+                </a>
+              </div>
+            );
+          }
+          
+          return (
+            <div className="text-center">
+              <span className="text-gray-400 text-sm">—</span>
+            </div>
+          );
+        },
+      },
     ],
     [btcPrice]
   );
@@ -527,6 +572,36 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                 {linkText}
                 <ExternalLink className="h-3 w-3" />
               </a>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'prospectAnnouncements',
+        header: 'Announcements',
+        enableSorting: false,
+        cell: ({ row }) => {
+          const { ticker, listingVenue } = row.original;
+          
+          if (listingVenue === 'HKEX') {
+            return (
+              <div className="text-center">
+                <a
+                  href={getHKEXAnnouncementsUrl(ticker)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 rounded-full text-xs font-medium hover:bg-red-100 transition-colors"
+                  title={`View HKEX announcements${ticker ? ` (Stock: ${ticker.replace('.HK', '').padStart(5, '0')})` : ''}`}
+                >
+                  HKEX News
+                </a>
+              </div>
+            );
+          }
+          
+          return (
+            <div className="text-center">
+              <span className="text-gray-400 text-sm">—</span>
             </div>
           );
         },
