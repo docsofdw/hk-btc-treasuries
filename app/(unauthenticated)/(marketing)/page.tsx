@@ -153,8 +153,7 @@ export default function HomePage() {
             </p>
             <div className="flex items-center justify-center space-x-6 sm:space-x-8">
               <a href="/api/v1/holdings" className="text-sm sm:text-base font-medium text-gray-600 hover:text-gray-900 transition-colors">API</a>
-              <a href="https://github.com/duke/hk-btc-treasuries" className="text-sm sm:text-base font-medium text-gray-600 hover:text-gray-900 transition-colors">GitHub</a>
-              <a href="https://twitter.com/YOUR_HANDLE" className="text-sm sm:text-base font-medium text-gray-600 hover:text-gray-900 transition-colors">Twitter</a>
+              <a href="https://x.com/docsofduke" className="text-sm sm:text-base font-medium text-gray-600 hover:text-gray-900 transition-colors">X</a>
             </div>
           </div>
         </footer>

@@ -1,4 +1,3 @@
-import { Github, Instagram, Music2, Youtube } from "lucide-react"
 import Link from "next/link"
 
 const XLogo = ({ className }: { className?: string }) => (
@@ -41,11 +40,7 @@ export function Footer() {
   }
 
   const socialLinks = [
-    { name: "X", href: "https://x.com", icon: XLogo },
-    { name: "YouTube", href: "https://youtube.com", icon: Youtube },
-    { name: "Instagram", href: "https://instagram.com", icon: Instagram },
-    { name: "TikTok", href: "https://tiktok.com", icon: Music2 },
-    { name: "GitHub", href: "https://github.com", icon: Github }
+    { name: "X", href: "https://x.com/docsofduke", icon: XLogo }
   ]
 
   return (
