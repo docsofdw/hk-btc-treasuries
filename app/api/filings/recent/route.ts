@@ -119,55 +119,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ filings });
       
     } else {
-      // Return mock data for backward compatibility
-      const mockFilings: Filing[] = [
-        {
-          id: '1',
-          company: 'MicroStrategy Inc.',
-          ticker: 'MSTR',
-          type: 'acquisition',
-          btcAmount: 14620,
-          totalHoldings: 189150,
-          source: 'https://www.sec.gov/filing/1',
-          date: '2024-01-15T00:00:00Z',
-          verified: true,
-          exchange: 'SEC',
-          documentType: '8-K',
-          title: 'MicroStrategy Acquires Additional Bitcoin',
-          listingVenue: 'NASDAQ'
-        },
-        {
-          id: '2',
-          company: 'Tesla Inc.',
-          ticker: 'TSLA',
-          type: 'disclosure',
-          btcAmount: 42000,
-          totalHoldings: 42000,
-          source: 'https://www.sec.gov/filing/2',
-          date: '2024-01-12T00:00:00Z',
-          verified: true,
-          exchange: 'SEC',
-          documentType: '10-K',
-          title: 'Annual Report - Bitcoin Holdings Disclosed',
-          listingVenue: 'NASDAQ'
-        },
-        {
-          id: '3',
-          company: 'Boyaa Interactive',
-          ticker: '0434.HK',
-          type: 'acquisition',
-          btcAmount: 1000,
-          totalHoldings: 2641,
-          source: 'https://www.hkexnews.hk/filing/3',
-          date: '2024-01-05T00:00:00Z',
-          verified: true,
-          exchange: 'HKEX',
-          title: 'Announcement - Bitcoin Acquisition',
-          listingVenue: 'HKEX'
-        }
-      ];
-      
-      return NextResponse.json({ filings: mockFilings });
+      // Return empty array instead of mock data
+      return NextResponse.json({ filings: [] });
     }
     
   } catch (error) {

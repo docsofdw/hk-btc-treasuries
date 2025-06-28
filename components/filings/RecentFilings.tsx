@@ -251,21 +251,6 @@ export default function RecentFilings() {
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="text-right flex-shrink-0 hidden sm:block">
-                    <div className="text-xs sm:text-sm text-gray-500">Value</div>
-                    <div className="font-semibold text-sm sm:text-base">
-                      ${(Math.abs(filing.btcAmount) * 107000).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Mobile value display */}
-                <div className="sm:hidden mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Value</span>
-                  <span className="text-xs font-semibold">
-                    ${(Math.abs(filing.btcAmount) * 107000).toLocaleString()}
-                  </span>
                 </div>
               </div>
             );

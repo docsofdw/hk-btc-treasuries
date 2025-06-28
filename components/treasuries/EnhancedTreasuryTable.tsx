@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Info, ExternalLink, FileText, Search, Filter, X, TrendingUp, TrendingDown, Building2, Bitcoin, DollarSign, Calendar, ChevronDown } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import ProspectsView from './ProspectsView';
 
 // Mini sparkline component
 const MiniChart = ({ trend }: { trend: 'up' | 'down' | 'flat' }) => {
@@ -174,7 +175,7 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
                     onClick={(e) => e.stopPropagation()}
                   >
                     <FileText className="h-5 w-5" />
-                    <span>View Filing PDF</span>
+                    <span>Latest Bitcoin Filing</span>
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 </div>
@@ -271,11 +272,10 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
   useEffect(() => {
     if (activeTab === 'holders' && sorting.length === 0) {
       setSorting([{ id: 'btc', desc: true }]);
-    } else if (activeTab === 'prospects' && sorting.length === 0) {
-      setSorting([{ id: 'prospectCompany', desc: false }]);
     } else if (activeTab === 'all' && sorting.length === 0) {
       setSorting([{ id: 'legalName', desc: false }]);
     }
+    // No sorting needed for prospects tab since it uses a custom view
   }, [activeTab, sorting.length]);
 
   // Fetch market cap data only for entities that don't have it in database
@@ -427,7 +427,7 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                   className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
                 >
                   <FileText className="h-4 w-4" />
-                  Filing PDF
+                  Latest Bitcoin Filing
                   <ExternalLink className="h-3 w-3" />
                 </a>
               ) : (
@@ -654,7 +654,7 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
         </div>
 
         {/* Mobile Search Bar */}
-        {isMobile && (
+        {isMobile && activeTab !== 'prospects' && (
           <div className="relative">
             <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
               <Search className="h-5 w-5" />
@@ -763,32 +763,36 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
               </div>
 
               {/* Desktop Search */}
-              <div className="relative w-64">
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                  <Search className="h-4 w-4" />
+              {activeTab !== 'prospects' && (
+                <div className="relative w-64">
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <Search className="h-4 w-4" />
+                  </div>
+                  <Input
+                    type="text"
+                    placeholder="Search companies..."
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    className="pl-9 pr-9 h-9 text-sm"
+                  />
+                  {globalFilter && (
+                    <button
+                      onClick={() => setGlobalFilter('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
-                <Input
-                  type="text"
-                  placeholder="Search companies..."
-                  value={globalFilter}
-                  onChange={(e) => setGlobalFilter(e.target.value)}
-                  className="pl-9 pr-9 h-9 text-sm"
-                />
-                {globalFilter && (
-                  <button
-                    onClick={() => setGlobalFilter('')}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Mobile Cards / Desktop Table */}
-        {isMobile ? (
+        {/* Mobile Cards / Desktop Table / Prospects View */}
+        {activeTab === 'prospects' ? (
+          <ProspectsView btcPrice={btcPrice} prospects={prospects} />
+        ) : isMobile ? (
           <div className="space-y-3">
             {table.getRowModel().rows.map((row, index) => (
               <MobileCard
