@@ -18,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Info, ExternalLink, FileText, Search, Filter, X, TrendingUp, TrendingDown, Building2, Bitcoin, DollarSign, Calendar, ChevronDown } from 'lucide-react';
+import { Info, ExternalLink, FileText, Search, Filter, X, TrendingUp, TrendingDown, Building2, Bitcoin, DollarSign, Calendar, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ProspectsView from './ProspectsView';
 
@@ -71,7 +71,19 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
                 </span>
               )}
               <h3 className="font-bold text-gray-900 text-xl leading-tight">
-                {entity.legalName}
+                {entity.listingVenue === 'HKEX' ? (
+                  <a
+                    href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${entity.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-blue-600 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {entity.legalName}
+                  </a>
+                ) : (
+                  entity.legalName
+                )}
               </h3>
             </div>
             <div className="flex items-center gap-2.5">
@@ -308,138 +320,128 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
     fetchMarketData();
   }, [data]);
 
-  // Column definitions for holders
+  // Column definitions for holders (simplified for desktop)
   const holdersColumns = useMemo<ColumnDef<TreasuryEntity>[]>(
     () => [
       {
         id: 'rank',
         header: '#',
         accessorFn: (_row, i) => i + 1,
-        size: 50,
+        size: 60,
         enableSorting: false,
-        cell: ({ getValue, row }) => {
+        cell: ({ getValue }) => {
           const rank = getValue() as number;
           return (
-            <div className="text-center font-medium">
-              <span className={`${
-                rank === 1 ? 'text-yellow-600 font-bold' : 
-                rank === 2 ? 'text-gray-600 font-bold' : 
-                rank === 3 ? 'text-yellow-700 font-bold' : 'text-gray-500'
+            <div className="text-center">
+              <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm ${
+                rank === 1 ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-lg shadow-amber-500/30' : 
+                rank === 2 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-white shadow-lg shadow-gray-400/30' : 
+                rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/30' : 
+                'bg-gray-100 text-gray-600'
               }`}>
-                #{rank}
-              </span>
-              {rank <= 3 && (
-                <div className="text-lg leading-none">
-                  {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
-                </div>
-              )}
+                {rank}
+              </div>
             </div>
           );
         },
       },
       {
         id: 'legalName',
-        header: 'Company',
+        header: ({ column }) => (
+          <button
+            className="flex items-center gap-1 font-semibold hover:text-gray-700"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Company Name
+            <ArrowUpDown className="h-3 w-3" />
+          </button>
+        ),
         accessorKey: 'legalName',
         cell: ({ row }) => (
-          <div className="min-w-[200px]">
-            <div className="flex items-center gap-2 mb-1">
-              <a
-                href={getOfficialExchangeUrl(row.original.ticker, row.original.listingVenue)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
-              >
-                {row.original.legalName}
-              </a>
-              <Badge variant="outline" className="text-green-700 bg-green-50 border-green-200">
-                ✔ Disclosed
-              </Badge>
+          <div className="py-1">
+            <div className="font-semibold text-gray-900 text-base mb-1">
+              {row.original.listingVenue === 'HKEX' ? (
+                <a
+                  href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${row.original.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  {row.original.legalName}
+                </a>
+              ) : (
+                row.original.legalName
+              )}
             </div>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span className="font-mono">{row.original.ticker}</span>
-              <span className={`px-2 py-0.5 rounded text-xs ${
-                row.original.listingVenue === 'HKEX' ? 'bg-red-100 text-red-700' : 
-                row.original.listingVenue === 'NASDAQ' ? 'bg-blue-100 text-blue-700' : 
-                'bg-purple-100 text-purple-700'
-              }`}>
-                {row.original.listingVenue}
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-white">
+                {row.original.ticker}
               </span>
-              <span>•</span>
-              <span>{row.original.hq}</span>
+              <Badge 
+                variant="outline" 
+                className={`text-xs font-medium ${
+                  row.original.listingVenue === 'HKEX' 
+                    ? 'bg-red-50/50 text-red-700 border-red-200' 
+                    : row.original.listingVenue === 'NASDAQ' 
+                    ? 'bg-blue-50/50 text-blue-700 border-blue-200' 
+                    : 'bg-purple-50/50 text-purple-700 border-purple-200'
+                }`}
+              >
+                {row.original.listingVenue}
+              </Badge>
             </div>
           </div>
         ),
       },
       {
         id: 'btc',
-        header: 'Bitcoin Holdings',
+        header: ({ column }) => (
+          <button
+            className="flex items-center gap-1 font-semibold hover:text-gray-700 w-full justify-end"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Bitcoin Held
+            <ArrowUpDown className="h-3 w-3" />
+          </button>
+        ),
         accessorKey: 'btc',
         cell: ({ getValue }) => (
-          <div className="text-right min-w-[120px]">
-            <div className="font-mono font-bold text-lg text-orange-600">
-              {numeral(getValue() as number).format('0,0')} BTC
-            </div>
-            <div className="text-xs text-gray-500">
-              ₿ {numeral(getValue() as number).format('0.00a')}
+          <div className="text-right">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200/50">
+              <Bitcoin className="h-5 w-5 text-orange-500" />
+              <span className="font-mono font-bold text-lg text-gray-900">
+                {numeral(getValue() as number).format('0,0')}
+              </span>
             </div>
           </div>
         ),
       },
       {
-        header: 'USD Value',
+        header: ({ column }) => (
+          <button
+            className="flex items-center gap-1 font-semibold hover:text-gray-700 w-full justify-end"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            USD Value
+            <ArrowUpDown className="h-3 w-3" />
+          </button>
+        ),
         id: 'usdValue',
         accessorFn: (row) => row.btc * btcPrice,
         cell: ({ getValue }) => (
-          <div className="text-right min-w-[120px]">
-            <div className="font-medium text-green-600">
-              {numeral(getValue() as number).format('$0,0')}
-            </div>
-            <div className="text-xs text-gray-500">
-              {numeral(getValue() as number).format('$0.00a')}
+          <div className="text-right">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200/50">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              <span className="font-semibold text-lg text-gray-900">
+                {numeral(getValue() as number).format('$0.0a')}
+              </span>
             </div>
           </div>
         ),
-      },
-      {
-        id: 'lastDisclosed', 
-        header: 'Last Disclosed',
-        accessorKey: 'lastDisclosed',
-        cell: ({ getValue }) => (
-          <div className="text-sm text-gray-600">
-            {dayjs(getValue() as string).format('MMM DD, YYYY')}
-          </div>
-        ),
-      },
-      {
-        id: 'source',
-        header: 'Source',
-        accessorKey: 'source',
-        cell: ({ getValue, row }) => {
-          const sourceUrl = getValue() as string;
-          return (
-            <div className="text-center">
-              {sourceUrl ? (
-                <a
-                  href={sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
-                >
-                  <FileText className="h-4 w-4" />
-                  Latest Bitcoin Filing
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              ) : (
-                <span className="text-gray-400 text-sm">—</span>
-              )}
-            </div>
-          );
-        },
       },
       {
         id: 'announcements',
-        header: 'Announcements',
+        header: 'HKEX News',
         enableSorting: false,
         cell: ({ row }) => {
           const { ticker, listingVenue } = row.original;
@@ -451,10 +453,11 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                   href={getHKEXAnnouncementsUrl(ticker)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 rounded-full text-xs font-medium hover:bg-red-100 transition-colors"
-                  title={`View HKEX announcements${ticker ? ` (Stock: ${ticker.replace('.HK', '').padStart(5, '0')})` : ''}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm text-red-600 rounded-xl text-sm font-medium hover:bg-red-50 transition-all duration-200 border border-red-200/50 shadow-sm hover:shadow-md"
                 >
-                  HKEX News
+                  <FileText className="h-4 w-4" />
+                  <span>HKEX News</span>
+                  <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
             );
@@ -462,7 +465,7 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           
           return (
             <div className="text-center">
-              <span className="text-gray-400 text-sm">—</span>
+              <span className="text-gray-300">—</span>
             </div>
           );
         },
@@ -471,51 +474,67 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
     [btcPrice]
   );
 
-  // Column definitions for prospects
+  // Column definitions for prospects (simplified for desktop)
   const prospectsColumns = useMemo<ColumnDef<TreasuryEntity>[]>(
     () => [
       {
         id: 'prospectRank',
         header: '#',
         accessorFn: (_row, i) => i + 1,
-        size: 50,
+        size: 60,
         enableSorting: false,
         cell: ({ getValue }) => (
-          <div className="text-center font-medium text-gray-500">
-            #{getValue() as number}
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 text-gray-600 font-bold text-sm">
+              {getValue() as number}
+            </div>
           </div>
         ),
       },
       {
         id: 'prospectCompany',
-        header: 'Company',
+        header: ({ column }) => (
+          <button
+            className="flex items-center gap-1 font-semibold hover:text-gray-700"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Company Name
+            <ArrowUpDown className="h-3 w-3" />
+          </button>
+        ),
         accessorKey: 'legalName',
         cell: ({ row }) => (
-          <div className="min-w-[200px]">
-            <div className="flex items-center gap-2 mb-1">
-              <a
-                href={getOfficialExchangeUrl(row.original.ticker, row.original.listingVenue)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
-              >
-                {row.original.legalName}
-              </a>
-              <Badge variant="outline" className="text-gray-600 bg-gray-50 border-gray-200">
-                🔍 Prospect
-              </Badge>
+          <div className="py-1">
+            <div className="font-semibold text-gray-900 text-base mb-1">
+              {row.original.listingVenue === 'HKEX' ? (
+                <a
+                  href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${row.original.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  {row.original.legalName}
+                </a>
+              ) : (
+                row.original.legalName
+              )}
             </div>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span className="font-mono">{row.original.ticker}</span>
-              <span className={`px-2 py-0.5 rounded text-xs ${
-                row.original.listingVenue === 'HKEX' ? 'bg-red-100 text-red-700' : 
-                row.original.listingVenue === 'NASDAQ' ? 'bg-blue-100 text-blue-700' : 
-                'bg-purple-100 text-purple-700'
-              }`}>
-                {row.original.listingVenue}
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-white">
+                {row.original.ticker}
               </span>
-              <span>•</span>
-              <span>{row.original.hq}</span>
+              <Badge 
+                variant="outline" 
+                className={`text-xs font-medium ${
+                  row.original.listingVenue === 'HKEX' 
+                    ? 'bg-red-50/50 text-red-700 border-red-200' 
+                    : row.original.listingVenue === 'NASDAQ' 
+                    ? 'bg-blue-50/50 text-blue-700 border-blue-200' 
+                    : 'bg-purple-50/50 text-purple-700 border-purple-200'
+                }`}
+              >
+                {row.original.listingVenue}
+              </Badge>
             </div>
           </div>
         ),
@@ -526,9 +545,10 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
         enableSorting: false,
         cell: () => (
           <div className="text-center">
-            <Badge variant="outline" className="text-orange-600 bg-orange-50 border-orange-200">
-              No Holdings
-            </Badge>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200/50">
+              <Search className="h-5 w-5 text-amber-600" />
+              <span className="font-medium text-gray-900">Prospect</span>
+            </div>
           </div>
         ),
       },
@@ -542,22 +562,7 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           const linkUrl = interestUrl || sourceUrl;
           
           if (!linkUrl) {
-            return <span className="text-gray-400 text-sm">—</span>;
-          }
-
-          // Determine link type and text
-          let linkText = 'More Info';
-          let icon = <Info className="h-4 w-4" />;
-          
-          if (linkUrl.includes('press') || linkUrl.includes('news')) {
-            linkText = 'Press Release';
-            icon = <FileText className="h-4 w-4" />;
-          } else if (linkUrl.includes('blog') || linkUrl.includes('article')) {
-            linkText = 'Article';
-            icon = <FileText className="h-4 w-4" />;
-          } else if (linkUrl.includes('investor') || linkUrl.includes('presentation')) {
-            linkText = 'Investor Deck';
-            icon = <FileText className="h-4 w-4" />;
+            return <div className="text-center"><span className="text-gray-300">—</span></div>;
           }
 
           return (
@@ -566,10 +571,10 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                 href={linkUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-50 transition-all duration-200 border border-blue-200/50 shadow-sm hover:shadow-md"
               >
-                {icon}
-                {linkText}
+                <Info className="h-4 w-4" />
+                <span>More Info</span>
                 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
@@ -578,7 +583,7 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
       },
       {
         id: 'prospectAnnouncements',
-        header: 'Announcements',
+        header: 'HKEX News',
         enableSorting: false,
         cell: ({ row }) => {
           const { ticker, listingVenue } = row.original;
@@ -590,10 +595,11 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                   href={getHKEXAnnouncementsUrl(ticker)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 rounded-full text-xs font-medium hover:bg-red-100 transition-colors"
-                  title={`View HKEX announcements${ticker ? ` (Stock: ${ticker.replace('.HK', '').padStart(5, '0')})` : ''}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm text-red-600 rounded-xl text-sm font-medium hover:bg-red-50 transition-all duration-200 border border-red-200/50 shadow-sm hover:shadow-md"
                 >
-                  HKEX News
+                  <FileText className="h-4 w-4" />
+                  <span>HKEX News</span>
+                  <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
             );
@@ -601,7 +607,7 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           
           return (
             <div className="text-center">
-              <span className="text-gray-400 text-sm">—</span>
+              <span className="text-gray-300">—</span>
             </div>
           );
         },
@@ -610,9 +616,21 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
     []
   );
 
+  // Select columns based on active tab
+  const currentColumns = useMemo(() => {
+    if (activeTab === 'prospects') {
+      return prospectsColumns;
+    } else if (activeTab === 'holders') {
+      return holdersColumns;
+    } else {
+      // For 'all' tab, use holders columns
+      return holdersColumns;
+    }
+  }, [activeTab, holdersColumns, prospectsColumns]);
+
   const table = useReactTable({
     data: filteredData,
-    columns: activeTab === 'prospects' ? prospectsColumns : holdersColumns,
+    columns: currentColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -629,26 +647,47 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
   return (
     <TooltipProvider>
       <div className="w-full space-y-4 sm:space-y-6">
-        {/* Header with Summary Stats - Mobile Optimized */}
-        <div className="bg-gradient-to-br from-orange-50 via-yellow-50 to-orange-50 rounded-2xl p-5 sm:p-8 border border-orange-200/50 shadow-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-            <div className="text-center p-5 bg-white/80 rounded-xl backdrop-blur-sm border border-orange-100/50 shadow-sm">
-              <div className="text-3xl sm:text-4xl font-bold text-orange-600 mb-1">
-                {holders.length}
+        {/* Simplified Hero Section */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8">
+          <div className="space-y-6">
+            {/* Title and Total */}
+            <div className="text-center">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+                Asia's Bitcoin Treasury
+              </h1>
+              
+              {/* Total Value */}
+              <div className="flex items-center justify-center gap-2 text-3xl sm:text-4xl font-bold">
+                <Bitcoin className="h-8 w-8 text-orange-500" />
+                <span className="text-gray-900">{numeral(holders.reduce((sum, h) => sum + h.btc, 0)).format('0,0')}</span>
+                <span className="text-gray-500 text-2xl font-normal">BTC</span>
               </div>
-              <div className="text-sm sm:text-base text-gray-700 font-medium">Active Bitcoin Holders</div>
+              
+              <div className="mt-2 text-xl sm:text-2xl text-gray-600">
+                ≈ {numeral(holders.reduce((sum, h) => sum + h.btc, 0) * btcPrice).format('$0.00a')} USD
+              </div>
+              
+              <div className="mt-4 text-sm text-gray-500">
+                @ {numeral(btcPrice).format('$0,0')} per BTC
+              </div>
             </div>
-            <div className="text-center p-5 bg-white/80 rounded-xl backdrop-blur-sm border border-green-100/50 shadow-sm">
-              <div className="text-3xl sm:text-4xl font-bold text-green-600 mb-1">
-                {numeral(holders.reduce((sum, h) => sum + h.btc, 0)).format('0,0')}
+            
+            {/* Simple Stats Row */}
+            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-gray-100">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900">{holders.length}</div>
+                <div className="text-sm text-gray-600">Companies</div>
               </div>
-              <div className="text-sm sm:text-base text-gray-700 font-medium">Total Bitcoin Holdings</div>
-            </div>
-            <div className="text-center p-5 bg-white/80 rounded-xl backdrop-blur-sm border border-blue-100/50 shadow-sm">
-              <div className="text-3xl sm:text-4xl font-bold text-blue-600 mb-1">
-                {prospects.length}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900">
+                  {((holders.reduce((sum, h) => sum + h.btc, 0) / 21000000) * 100).toFixed(3)}%
+                </div>
+                <div className="text-sm text-gray-600">of Supply</div>
               </div>
-              <div className="text-sm sm:text-base text-gray-700 font-medium">Companies to Watch</div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900">{prospects.length}</div>
+                <div className="text-sm text-gray-600">Prospects</div>
+              </div>
             </div>
           </div>
         </div>
@@ -790,9 +829,11 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
         </div>
 
         {/* Mobile Cards / Desktop Table / Prospects View */}
-        {activeTab === 'prospects' ? (
-          <ProspectsView btcPrice={btcPrice} prospects={prospects} />
-        ) : isMobile ? (
+        {(() => {
+          if (activeTab === 'prospects') {
+            return <ProspectsView btcPrice={btcPrice} prospects={prospects} />;
+          } else if (isMobile) {
+            return (
           <div className="space-y-3">
             {table.getRowModel().rows.map((row, index) => (
               <MobileCard
@@ -828,94 +869,71 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
               </div>
             )}
           </div>
-        ) : (
-          // Desktop Table View
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                          onClick={header.column.getToggleSortingHandler()}
-                          style={{ width: header.getSize() }}
-                        >
-                          <div className="flex items-center gap-1">
+            );
+          } else {
+            return (
+          // Desktop Table View - Simplified
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <th
+                            key={header.id}
+                            className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                            style={{ width: header.getSize() }}
+                          >
                             {flexRender(header.column.columnDef.header, header.getContext())}
-                            {header.column.getIsSorted() === 'asc' && <span>↑</span>}
-                            {header.column.getIsSorted() === 'desc' && <span>↓</span>}
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {table.getRowModel().rows.map((row, index) => (
-                    <tr
-                      key={row.id}
-                      className={`hover:bg-gray-50 transition-colors ${
-                        activeTab === 'holders' && index < 3 ? 'bg-yellow-50' : ''
-                      }`}
+                          </th>
+                        ))}
+                      </tr>
+                    ))}
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {table.getRowModel().rows.map((row, index) => (
+                      <tr
+                        key={row.id}
+                        className={`group hover:bg-white/80 transition-all duration-200 ${
+                          activeTab === 'holders' && index < 3 
+                            ? 'bg-gradient-to-r from-yellow-50/30 to-orange-50/30' 
+                            : ''
+                        }`}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <td key={cell.id} className="px-6 py-5 whitespace-nowrap">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {table.getRowModel().rows.length === 0 && (
+                <div className="text-center py-16 bg-white/50 backdrop-blur-sm">
+                  <div className="text-gray-400 text-6xl mb-4">∅</div>
+                  <div className="text-gray-600 font-medium text-lg mb-2">
+                    {globalFilter ? 'No companies match your search' : 'No data available'}
+                  </div>
+                  {globalFilter && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setGlobalFilter('')}
+                      className="mt-4"
                     >
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-6 py-4 whitespace-nowrap">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {table.getRowModel().rows.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-500 mb-2">
-                  {globalFilter ? 'No companies match your search' : 'No data available'}
+                      Clear search
+                    </Button>
+                  )}
                 </div>
-                {globalFilter && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setGlobalFilter('')}
-                  >
-                    Clear search
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Footer Summary - Mobile Optimized */}
-        {activeTab === 'holders' && holders.length > 0 && (
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-2xl p-5 sm:p-6 border border-gray-200/50 shadow-sm">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div className="text-center sm:text-left">
-                <p className="text-gray-700 font-medium text-base">
-                  Showing {holders.length} companies with confirmed Bitcoin holdings
-                </p>
-              </div>
-              <div className="text-center sm:text-right">
-                <div className="flex items-center gap-2 justify-center sm:justify-end">
-                  <div className="flex items-center gap-1">
-                    <Bitcoin className="h-5 w-5 text-orange-600" />
-                    <span className="font-bold text-lg text-gray-900">
-                      {numeral(holders.reduce((sum, h) => sum + h.btc, 0)).format('0,0')} BTC
-                    </span>
-                  </div>
-                  <div className="text-green-600 font-semibold text-base">
-                    ({numeral(holders.reduce((sum, h) => sum + h.btc, 0) * btcPrice).format('$0.0a')})
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
-          </div>
-        )}
+            );
+          }
+        })()}
       </div>
     </TooltipProvider>
   );
