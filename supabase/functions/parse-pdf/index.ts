@@ -1,6 +1,9 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-import * as pdfParse from 'https://esm.sh/pdf-parse@1.1.1'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { PDFParser, SimplePDFParser } from '../../../lib/parsers/pdf-parser.ts'
+import { DatabaseHelpers, ValidationSchemas } from '../../../lib/services/database-helpers.ts'
+import { monitoring } from '../../../lib/services/monitoring.ts'
+import { extractBitcoinInfo, determineFilingType } from '../../../lib/parsers/bitcoin-extractor.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,87 +16,12 @@ interface PDFParseRequest {
   filingId: string;
 }
 
-interface BitcoinInfo {
-  btcDelta: number | null;
-  btcTotal: number | null;
-  isDisposal: boolean;
-}
-
-async function extractBitcoinInfo(text: string): Promise<BitcoinInfo> {
-  // Patterns for different types of Bitcoin mentions
-  const patterns = {
-    // Acquisitions
-    purchased: /(?:purchased?|acquired?|bought)\s+(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:bitcoin|btc)/gi,
-    
-    // Disposals (negative)
-    sold: /(?:sold|disposed?\s+of|divested)\s+(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:bitcoin|btc)/gi,
-    
-    // Total holdings
-    totalHoldings: /(?:total\s+(?:bitcoin|btc)\s+holdings?|now\s+holds?|current\s+holdings?)\s*(?:of|:)?\s*(\d+(?:,\d{3})*(?:\.\d+)?)/gi,
-    
-    // Alternative patterns
-    btcAmount: /(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:bitcoin|btc)/gi,
-  };
-  
-  let btcDelta = null;
-  let btcTotal = null;
-  let isDisposal = false;
-  
-  // Check for specific transaction types first
-  const disposalMatch = text.match(patterns.sold);
-  if (disposalMatch && disposalMatch.length > 0) {
-    const match = disposalMatch[0].match(/(\d+(?:,\d{3})*(?:\.\d+)?)/);
-    if (match) {
-      btcDelta = -parseFloat(match[1].replace(/,/g, ''));
-      isDisposal = true;
-    }
-  }
-  
-  if (!btcDelta) {
-    const acquisitionMatch = text.match(patterns.purchased);
-    if (acquisitionMatch && acquisitionMatch.length > 0) {
-      const match = acquisitionMatch[0].match(/(\d+(?:,\d{3})*(?:\.\d+)?)/);
-      if (match) {
-        btcDelta = parseFloat(match[1].replace(/,/g, ''));
-      }
-    }
-  }
-  
-  // Check for total holdings
-  const totalMatch = text.match(patterns.totalHoldings);
-  if (totalMatch && totalMatch.length > 0) {
-    const match = totalMatch[0].match(/(\d+(?:,\d{3})*(?:\.\d+)?)/);
-    if (match) {
-      btcTotal = parseFloat(match[1].replace(/,/g, ''));
-    }
-  }
-  
-  // If no specific patterns found, look for any Bitcoin amounts
-  if (!btcDelta && !btcTotal) {
-    const amountMatches = [...text.matchAll(patterns.btcAmount)];
-    if (amountMatches.length > 0) {
-      // Use the largest amount found as it's likely the most relevant
-      const amounts = amountMatches.map(match => parseFloat(match[1].replace(/,/g, '')));
-      btcTotal = Math.max(...amounts);
-    }
-  }
-  
-  return { btcDelta, btcTotal, isDisposal };
-}
-
-function determineFilingType(btcDelta: number | null, btcTotal: number | null, isDisposal: boolean): string {
-  if (btcDelta) {
-    return isDisposal ? 'disposal' : 'acquisition';
-  } else if (btcTotal) {
-    return 'update';
-  }
-  return 'disclosure';
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  const startTime = Date.now();
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -104,81 +32,118 @@ serve(async (req) => {
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const dbHelpers = new DatabaseHelpers(supabase);
+    const pdfParser = new PDFParser();
     
     const { url, filingId }: PDFParseRequest = await req.json();
     
-    if (!url || !filingId) {
-      throw new Error('Missing required fields: url and filingId');
+    // Validate input
+    const validated = dbHelpers.validateInput(
+      { url, filingId },
+      { url: ValidationSchemas.url }
+    );
+    
+    if (!filingId) {
+      throw new Error('Missing required field: filingId');
     }
     
-    console.log(`Parsing PDF: ${url} for filing ${filingId}`);
+    monitoring.info('parse-pdf', `Starting PDF parse: ${url} for filing ${filingId}`);
     
-    // Fetch PDF with proper headers
-    const pdfResponse = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; BitcoinTreasuries/1.0)',
-        'Accept': 'application/pdf,*/*',
-      }
-    });
+    // Parse PDF with monitoring
+    const parseResult = await monitoring.trackPerformance(
+      'pdf_parse',
+      async () => {
+        const result = await pdfParser.parseFromUrl(validated.url);
+        
+        // If main parser fails, try simple parser
+        if (result.error && result.text.length === 0) {
+          monitoring.warn('parse-pdf', 'Primary parser failed, trying fallback', { error: result.error });
+          
+          const response = await fetch(validated.url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; BitcoinTreasuries/1.0)',
+              'Accept': 'application/pdf,*/*',
+            }
+          });
+          
+          if (response.ok) {
+            const buffer = await response.arrayBuffer();
+            const simplePdfParser = new SimplePDFParser();
+            return await simplePdfParser.parse(buffer);
+          }
+        }
+        
+        return result;
+      },
+      { url: validated.url, filingId }
+    );
     
-    if (!pdfResponse.ok) {
-      throw new Error(`Failed to fetch PDF: ${pdfResponse.status} ${pdfResponse.statusText}`);
+    if (parseResult.error && parseResult.text.length === 0) {
+      throw new Error(`PDF parsing failed: ${parseResult.error}`);
     }
     
-    const pdfBuffer = await pdfResponse.arrayBuffer();
-    
-    if (pdfBuffer.byteLength === 0) {
-      throw new Error('Empty PDF response');
-    }
-    
-    // Parse PDF
-    const data = await pdfParse.default(Buffer.from(pdfBuffer));
-    
-    if (!data.text || data.text.length < 100) {
-      throw new Error('PDF parsing failed or returned insufficient text');
+    if (parseResult.text.length < 100) {
+      monitoring.warn('parse-pdf', 'PDF has insufficient text', { 
+        textLength: parseResult.text.length,
+        url: validated.url 
+      });
     }
     
     // Extract Bitcoin information
-    const { btcDelta, btcTotal, isDisposal } = await extractBitcoinInfo(data.text);
+    const bitcoinInfo = extractBitcoinInfo(parseResult.text);
     
     // Determine filing type
-    const filingType = determineFilingType(btcDelta, btcTotal, isDisposal);
+    const filingType = determineFilingType(bitcoinInfo.btcDelta, bitcoinInfo.btcTotal, bitcoinInfo.isDisposal);
+    
+    // Sanitize extracted text
+    const sanitizedText = dbHelpers.sanitizeText(parseResult.text.slice(0, 10000));
     
     // Update the filing record
     const updateData: any = {
-      extracted_text: data.text.slice(0, 10000), // Store first 10k chars
+      extracted_text: sanitizedText,
       filing_type: filingType,
       detected_in: 'body',
       updated_at: new Date().toISOString()
     };
     
-    if (btcDelta !== null) {
-      updateData.btc_delta = btcDelta;
-      updateData.btc = Math.abs(btcDelta); // Store absolute value in btc field for compatibility
+    if (bitcoinInfo.btcDelta !== null) {
+      updateData.btc_delta = bitcoinInfo.btcDelta;
+      updateData.btc = Math.abs(bitcoinInfo.btcDelta); // Store absolute value in btc field for compatibility
     }
     
-    if (btcTotal !== null) {
-      updateData.btc_total = btcTotal;
-      updateData.total_holdings = btcTotal;
-      if (!btcDelta) {
-        updateData.btc = btcTotal; // Use total if no delta
+    if (bitcoinInfo.btcTotal !== null) {
+      updateData.btc_total = bitcoinInfo.btcTotal;
+      updateData.total_holdings = bitcoinInfo.btcTotal;
+      if (!bitcoinInfo.btcDelta) {
+        updateData.btc = bitcoinInfo.btcTotal; // Use total if no delta
       }
     }
     
-    const { error: updateError } = await supabase
-      .from('raw_filings')
-      .update(updateData)
-      .eq('id', filingId);
+    const { error: updateError } = await monitoring.trackPerformance(
+      'update_filing',
+      async () => {
+        const result = await supabase
+          .from('raw_filings')
+          .update(updateData)
+          .eq('id', filingId);
+        
+        if (result.error) throw result.error;
+        return result;
+      },
+      { filingId }
+    );
     
     if (updateError) {
       throw new Error(`Database update failed: ${updateError.message}`);
     }
     
-    console.log(`Successfully parsed PDF for filing ${filingId}:`, {
-      btcDelta,
-      btcTotal,
+    const duration = Date.now() - startTime;
+    monitoring.info('parse-pdf', `Successfully parsed PDF for filing ${filingId}`, {
+      btcDelta: bitcoinInfo.btcDelta,
+      btcTotal: bitcoinInfo.btcTotal,
       filingType,
-      pageCount: data.numpages
+      pageCount: parseResult.pageCount,
+      duration
     });
     
     return new Response(
@@ -186,19 +151,21 @@ serve(async (req) => {
         success: true,
         filingId,
         extracted: {
-          btcDelta,
-          btcTotal,
+          btcDelta: bitcoinInfo.btcDelta,
+          btcTotal: bitcoinInfo.btcTotal,
           filingType,
-          pageCount: data.numpages,
+          pageCount: parseResult.pageCount,
           detectedIn: 'body',
-          textLength: data.text.length
-        }
+          textLength: parseResult.text.length
+        },
+        duration: Date.now() - startTime,
+        timestamp: new Date().toISOString()
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
     
   } catch (error) {
-    console.error('PDF parse error:', error);
+    monitoring.error('parse-pdf', 'PDF parsing failed', error as Error, { filingId });
     
     return new Response(
       JSON.stringify({ 

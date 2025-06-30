@@ -1,10 +1,14 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { DatabaseHelpers, ValidationSchemas } from './database-helpers';
+import { monitoring } from './monitoring';
 
 export class TreasuryManager {
-  private supabase: SupabaseClient
+  private supabase: SupabaseClient;
+  private dbHelpers: DatabaseHelpers;
   
   constructor(supabaseClient: SupabaseClient) {
-    this.supabase = supabaseClient
+    this.supabase = supabaseClient;
+    this.dbHelpers = new DatabaseHelpers(supabaseClient);
   }
   
   async addOrUpdateEntity(data: {
@@ -15,48 +19,84 @@ export class TreasuryManager {
     sourceUrl: string
     lastDisclosed: string
   }) {
-    // Check if entity exists
-    const { data: existing } = await this.supabase
-      .from('entities')
-      .select('id')
-      .eq('ticker', data.ticker)
-      .single()
+    // Validate input
+    const validated = this.dbHelpers.validateInput(
+      { ticker: data.ticker, legalName: data.legalName, sourceUrl: data.sourceUrl },
+      { 
+        ticker: ValidationSchemas.ticker,
+        legalName: ValidationSchemas.entityName,
+        sourceUrl: ValidationSchemas.url
+      }
+    );
     
-    let entityId = existing?.id
-    
-    if (!entityId) {
-      // Create new entity
-      const { data: newEntity, error: createError } = await this.supabase
-        .from('entities')
-        .insert({
-          legal_name: data.legalName,
-          ticker: data.ticker,
-          listing_venue: this.determineVenue(data.ticker),
-          hq: 'TBD',
-          region: this.determineRegion(data.ticker)
-        })
-        .select()
-        .single()
-      
-      if (createError) throw createError
-      entityId = newEntity.id
+    if (data.btc < 0) {
+      throw new Error('BTC amount cannot be negative');
     }
     
-    // Add holding snapshot
-    const { error: snapshotError } = await this.supabase
-      .from('holdings_snapshots')
-      .insert({
-        entity_id: entityId,
-        btc: data.btc,
-        cost_basis_usd: data.costBasisUsd,
-        last_disclosed: data.lastDisclosed,
-        source_url: data.sourceUrl,
-        data_source: 'manual'
-      })
-    
-    if (snapshotError) throw snapshotError
-    
-    return { success: true, entityId }
+    return await monitoring.trackPerformance(
+      'add_or_update_entity',
+      async () => {
+        // Check if entity exists
+        const { data: existing } = await this.supabase
+          .from('entities')
+          .select('id')
+          .eq('ticker', validated.ticker as string)
+          .single();
+        
+        let entityId = existing?.id;
+        
+        if (!entityId) {
+          // Create new entity with sanitized data
+          const { data: newEntity, error: createError } = await this.supabase
+            .from('entities')
+            .insert({
+              legal_name: this.dbHelpers.sanitizeText(validated.legalName as string),
+              ticker: validated.ticker as string,
+              listing_venue: this.determineVenue(validated.ticker as string),
+              hq: 'TBD',
+              region: this.determineRegion(validated.ticker as string)
+            })
+            .select()
+            .single();
+          
+          if (createError) throw createError;
+          entityId = newEntity.id;
+          
+          monitoring.info('treasury-manager', 'Created new entity', { 
+            ticker: validated.ticker,
+            entityId 
+          });
+        }
+        
+        // Add holding snapshot
+        const { error: snapshotError } = await this.supabase
+          .from('holdings_snapshots')
+          .insert({
+            entity_id: entityId,
+            btc: data.btc,
+            cost_basis_usd: data.costBasisUsd,
+            last_disclosed: data.lastDisclosed,
+            source_url: validated.sourceUrl as string,
+            data_source: 'manual'
+          });
+        
+        if (snapshotError) throw snapshotError;
+        
+        // Create audit log
+        await this.dbHelpers.createAuditLog({
+          action: existing ? 'update_entity' : 'create_entity',
+          entity_id: entityId,
+          details: {
+            ticker: validated.ticker,
+            btc: data.btc,
+            source: validated.sourceUrl
+          }
+        });
+        
+        return { success: true, entityId };
+      },
+      { ticker: data.ticker }
+    );
   }
   
   async getAllEntities() {
