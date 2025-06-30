@@ -1,29 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import useSWR from 'swr';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { Button } from '@/components/ui/button';
 import { getHKEXAnnouncementsUrl } from '@/lib/utils';
+import { 
+  ArrowUpIcon, 
+  ArrowDownIcon, 
+  DocumentTextIcon,
+  ArrowPathIcon,
+  TableCellsIcon,
+  Squares2X2Icon,
+  CheckBadgeIcon
+} from '@heroicons/react/24/outline';
 
 dayjs.extend(relativeTime);
 
+// Simplified Filing interface
 interface Filing {
   id: string;
   company: string;
   ticker: string;
-  type: 'acquisition' | 'disposal' | 'disclosure' | 'update';
-  btcAmount: number;
-  totalHoldings: number;
-  source: string;
+  filing_type: 'acquisition' | 'disposal' | 'update' | 'disclosure';
+  btc_amount: number | null;
+  total_holdings: number | null;
+  pdf_url: string;
   date: string;
   verified: boolean;
-  exchange: string;
-  documentType?: string;
   title?: string;
-  summary?: string;
-  listingVenue: string;
-  detectedIn?: 'title' | 'body' | 'manual';
 }
 
 interface FilingsResponse {
@@ -32,91 +38,72 @@ interface FilingsResponse {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// Helper function to get provenance badge
-const getProvenanceBadge = (filing: Filing) => {
-  if (filing.verified) {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-        </svg>
-        Verified
-      </span>
-    );
-  } else if (filing.detectedIn === 'body') {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
-        <span>📄</span>
-        PDF Parsed
-      </span>
-    );
-  } else if (filing.detectedIn === 'manual') {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-        <span>✋</span>
-        Manual Entry
-      </span>
-    );
-  } else {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-        <span>📋</span>
-        Title Only
-      </span>
-    );
+// Pure function for filing icon
+function filingIcon(filing: Filing) {
+  switch (filing.filing_type) {
+    case 'acquisition':
+      return <ArrowUpIcon className="w-5 h-5" />;
+    case 'disposal':
+      return <ArrowDownIcon className="w-5 h-5" />;
+    case 'update':
+      return <ArrowPathIcon className="w-5 h-5" />;
+    default:
+      return <DocumentTextIcon className="w-5 h-5" />;
   }
+}
+
+// Pure function for filing label
+function filingLabel(filing: Filing): string {
+  switch (filing.filing_type) {
+    case 'acquisition':
+      return 'Acquired';
+    case 'disposal':
+      return 'Sold';
+    case 'update':
+      return 'Updated';
+    default:
+      return 'Disclosed';
+  }
+}
+
+// Filing type styling
+const filingTypeStyles = {
+  acquisition: {
+    color: 'text-green-600',
+    bg: 'bg-green-50',
+  },
+  disposal: {
+    color: 'text-red-600',
+    bg: 'bg-red-50',
+  },
+  update: {
+    color: 'text-purple-600',
+    bg: 'bg-purple-50',
+  },
+  disclosure: {
+    color: 'text-blue-600',
+    bg: 'bg-blue-50',
+  },
 };
 
 export default function RecentFilings() {
-  // Fetch real filing data from the API
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  
+  // Fetch from the new endpoint
   const { data, error, isLoading } = useSWR<FilingsResponse>(
-    `/api/filings/recent?source=raw&limit=8`, // Use raw_filings table
+    '/api/filings/recent/hkex',
     fetcher,
-    { 
-      refreshInterval: 5 * 60 * 1000, // Refresh every 5 minutes
-      revalidateOnFocus: true
-    }
+    { refreshInterval: 15 * 60 * 1000 } // 15 minutes
   );
 
-  const typeConfig = {
-    acquisition: {
-      icon: '📈',
-      color: 'text-green-600',
-      bg: 'bg-green-50',
-      label: 'Acquired'
-    },
-    disposal: {
-      icon: '📉',
-      color: 'text-red-600',
-      bg: 'bg-red-50',
-      label: 'Sold'
-    },
-    disclosure: {
-      icon: '📄',
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-      label: 'Disclosed'
-    },
-    update: {
-      icon: '🔄',
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
-      label: 'Updated'
-    }
-  };
-
-  // Handle loading and error states
   if (isLoading) {
     return (
       <div className="mt-8 sm:mt-12">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Recent Bitcoin Filings</h2>
-          <a 
-            href="/filings" 
-            className="text-xs sm:text-sm text-orange-600 hover:text-orange-700 transition-colors"
-          >
-            View all filings →
-          </a>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">Hong Kong (--)</span>
+          </div>
         </div>
         <div className="space-y-3 sm:space-y-4">
           {[...Array(4)].map((_, i) => (
@@ -141,12 +128,6 @@ export default function RecentFilings() {
       <div className="mt-8 sm:mt-12">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Recent Bitcoin Filings</h2>
-          <a 
-            href="/filings" 
-            className="text-xs sm:text-sm text-orange-600 hover:text-orange-700 transition-colors"
-          >
-            View all filings →
-          </a>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
           <p className="text-gray-500">Unable to load recent filings</p>
@@ -162,24 +143,45 @@ export default function RecentFilings() {
     <div className="mt-8 sm:mt-12">
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Recent Bitcoin Filings</h2>
-        <a 
-          href="/filings" 
-          className="text-xs sm:text-sm text-orange-600 hover:text-orange-700 transition-colors"
-        >
-          View all filings →
-        </a>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500">Hong Kong ({filings.length})</span>
+          <div className="flex items-center gap-1 border rounded-md">
+            <Button
+              size="sm"
+              variant={viewMode === 'cards' ? 'default' : 'ghost'}
+              onClick={() => setViewMode('cards')}
+              className="h-7 px-2"
+            >
+              <Squares2X2Icon className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              onClick={() => setViewMode('table')}
+              className="h-7 px-2"
+            >
+              <TableCellsIcon className="w-4 h-4" />
+            </Button>
+          </div>
+          <a 
+            href="/filings" 
+            className="text-xs sm:text-sm text-orange-600 hover:text-orange-700 transition-colors"
+          >
+            View all →
+          </a>
+        </div>
       </div>
 
-      <div className="space-y-3 sm:space-y-4">
-        {filings.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
-            <p className="text-gray-500">No recent filings found</p>
-            <p className="text-sm text-gray-400 mt-1">Our scanners check HKEX and SEC filings automatically every 4 hours</p>
-            <p className="text-xs text-gray-400 mt-1">Next scan: within the next few hours</p>
-          </div>
-        ) : (
-          filings.map((filing) => {
-            const config = typeConfig[filing.type];
+      {filings.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+          <p className="text-gray-500">No recent filings found</p>
+          <p className="text-sm text-gray-400 mt-1">HKEX filings are scanned automatically every 2 hours</p>
+        </div>
+      ) : viewMode === 'cards' ? (
+        // Card View
+        <div className="space-y-3 sm:space-y-4">
+          {filings.map((filing) => {
+            const styles = filingTypeStyles[filing.filing_type];
             
             return (
               <div 
@@ -188,60 +190,48 @@ export default function RecentFilings() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 sm:gap-4 flex-1">
-                    <div className={`${config.bg} rounded-lg p-2 sm:p-3 ${config.color} flex-shrink-0`}>
-                      <span className="text-lg sm:text-2xl">{config.icon}</span>
+                    <div className={`${styles.bg} rounded-lg p-2 sm:p-3 ${styles.color} flex-shrink-0`}>
+                      {filingIcon(filing)}
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                        {filing.exchange === 'HKEX' ? (
-                          <a
-                            href={getHKEXAnnouncementsUrl(filing.ticker)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-semibold text-gray-900 text-sm sm:text-base truncate hover:text-blue-600 transition-colors"
-                          >
-                            {filing.company}
-                          </a>
-                        ) : (
-                          <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
-                            {filing.company}
-                          </h3>
-                        )}
+                        <a
+                          href={getHKEXAnnouncementsUrl(filing.ticker)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-gray-900 text-sm sm:text-base truncate hover:text-blue-600 transition-colors"
+                        >
+                          {filing.company}
+                        </a>
                         <span className="text-xs sm:text-sm text-gray-500">
                           ({filing.ticker})
                         </span>
-                        <span className={`text-xs px-1.5 sm:px-2 py-0.5 rounded
-                          ${filing.exchange === 'HKEX' ? 'bg-red-100 text-red-700' : 
-                            filing.exchange === 'SEC' ? 'bg-blue-100 text-blue-700' : 
-                            'bg-gray-100 text-gray-700'}`}>
-                          {filing.exchange}
-                        </span>
-                        {getProvenanceBadge(filing)}
+                        {!filing.verified && (
+                          <span className="inline-flex items-center gap-1 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
+                            Unverified
+                          </span>
+                        )}
                       </div>
                       
                       <p className="text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2">
-                        {config.label} <span className="font-semibold">{Math.abs(filing.btcAmount).toLocaleString()} BTC</span>
-                        {filing.type !== 'update' && filing.totalHoldings > 0 && (
+                        {filingLabel(filing)}{' '}
+                        {filing.btc_amount !== null && (
+                          <span className="font-semibold">
+                            {Math.abs(filing.btc_amount).toLocaleString()} BTC
+                          </span>
+                        )}
+                        {filing.total_holdings !== null && filing.total_holdings > 0 && (
                           <span className="text-gray-500 hidden sm:inline">
-                            {' '}• Total holdings: {filing.totalHoldings.toLocaleString()} BTC
+                            {' '}• Total: {filing.total_holdings.toLocaleString()} BTC
                           </span>
                         )}
                       </p>
-
-                      {filing.title && (
-                        <p className="text-xs text-gray-500 mb-1.5 truncate" title={filing.title}>
-                          {filing.title}
-                        </p>
-                      )}
                       
                       <div className="flex items-center gap-3 sm:gap-4 text-xs text-gray-500">
                         <span>{dayjs(filing.date).fromNow()}</span>
-                        {filing.documentType && (
-                          <span className="hidden sm:inline">• {filing.documentType}</span>
-                        )}
                         <a 
-                          href={filing.source}
+                          href={filing.pdf_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="hover:text-orange-600 transition-colors"
@@ -254,21 +244,97 @@ export default function RecentFilings() {
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      ) : (
+        // Table View
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Company
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  BTC Δ
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Total
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Filed
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filings.map((filing) => {
+                const styles = filingTypeStyles[filing.filing_type];
+                
+                return (
+                  <tr key={filing.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <div className={`${styles.bg} rounded p-1 ${styles.color}`}>
+                          {filingIcon(filing)}
+                        </div>
+                        <div>
+                          <a
+                            href={getHKEXAnnouncementsUrl(filing.ticker)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                          >
+                            {filing.company}
+                          </a>
+                          <div className="text-xs text-gray-500">{filing.ticker}</div>
+                        </div>
+                        {filing.verified && (
+                          <CheckBadgeIcon className="w-4 h-4 text-green-600" />
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`text-sm font-medium ${styles.color}`}>
+                        {filing.btc_amount !== null 
+                          ? `${filing.filing_type === 'disposal' ? '-' : '+'}${Math.abs(filing.btc_amount).toLocaleString()}`
+                          : '-'
+                        }
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {filing.total_holdings !== null 
+                        ? filing.total_holdings.toLocaleString()
+                        : '-'
+                      }
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm text-gray-500">
+                        {dayjs(filing.date).fromNow()}
+                      </div>
+                      <a 
+                        href={filing.pdf_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-orange-600 hover:text-orange-700"
+                      >
+                        View →
+                      </a>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Status indicator */}
       <div className="mt-4 text-center">
         <p className="text-xs text-gray-500">
-          Data refreshed {data ? 'recently' : 'loading...'} • 
-          <span className="text-orange-600 ml-1">
+          <span className="text-orange-600">
             {filings.length} recent filing{filings.length !== 1 ? 's' : ''}
           </span>
-          <br />
-          <span className="text-gray-400 mt-1">
-            Auto-scanned every 4 hours from HKEX & SEC filing databases
-          </span>
+          {' '}• Auto-scanned every 2 hours from HKEX
         </p>
       </div>
     </div>

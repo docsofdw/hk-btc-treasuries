@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/utils/supabase/server';
 
 interface ScanResult {
   success: boolean;
@@ -85,6 +86,22 @@ export async function GET(request: NextRequest) {
     
     // Wait for both scans to complete
     const [hkexData, secData] = await Promise.all([hkexPromise, secPromise]);
+    
+    // Refresh materialized view if HKEX scan was successful
+    if (hkexData.success && hkexData.found > 0) {
+      try {
+        const supabase = await createClient();
+        const { error } = await supabase.rpc('refresh_recent_hkex_filings');
+        
+        if (error) {
+          console.error('Failed to refresh materialized view:', error);
+        } else {
+          console.log('Successfully refreshed mv_recent_hkex_filings');
+        }
+      } catch (mvError) {
+        console.error('Error refreshing materialized view:', mvError);
+      }
+    }
     
     // Log results for monitoring
     console.log('HKEX scan results:', {
