@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Info, ExternalLink, FileText, Search, Filter, X, TrendingUp, TrendingDown, Building2, Bitcoin, DollarSign, Calendar, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import ProspectsView from './ProspectsView';
+import CountryExplorer from './CountryExplorer';
 
 // Mini sparkline component
 const MiniChart = ({ trend }: { trend: 'up' | 'down' | 'flat' }) => {
@@ -54,6 +54,11 @@ const MiniChart = ({ trend }: { trend: 'up' | 'down' | 'flat' }) => {
 const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPrice: number; rank?: number }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const isHolder = entity.btc > 0;
+  const isChineseADR = (entity.listingVenue === 'NASDAQ' || entity.listingVenue === 'NYSE') && 
+    (entity.hq?.toLowerCase().includes('china') ||
+     entity.hq?.toLowerCase().includes('beijing') ||
+     entity.hq?.toLowerCase().includes('shanghai') ||
+     entity.hq?.toLowerCase().includes('shenzhen'));
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-gray-200">
@@ -64,27 +69,58 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 pr-3">
-            <div className="flex items-center gap-2.5 mb-2">
+            <div className="flex items-start gap-2.5 mb-2">
               {rank && rank <= 3 && (
-                <span className="text-2xl">
+                <span className="text-2xl flex-shrink-0">
                   {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
                 </span>
               )}
-              <h3 className="font-bold text-gray-900 text-xl leading-tight">
-                {entity.listingVenue === 'HKEX' ? (
-                  <a
-                    href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${entity.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-blue-600 transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {entity.legalName}
-                  </a>
-                ) : (
-                  entity.legalName
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-900 text-xl leading-tight mb-1">
+                  {entity.listingVenue === 'HKEX' ? (
+                    <a
+                      href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${entity.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-blue-600 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {entity.legalName}
+                    </a>
+                  ) : (
+                    entity.legalName
+                  )}
+                </h3>
+                {isChineseADR && (
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs font-semibold bg-orange-50 text-orange-700 border-orange-300 px-1.5 py-0.5"
+                    >
+                      ADR
+                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info 
+                          className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 cursor-help transition-colors" 
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs p-3 text-sm bg-white border border-gray-200 shadow-lg rounded-lg">
+                        <div className="space-y-2">
+                          <div className="font-semibold text-gray-900">American Depositary Receipt (ADR)</div>
+                          <div className="text-gray-700">
+                            This Chinese company trades on US exchanges through ADRs - certificates representing shares of the foreign company.
+                          </div>
+                          <div className="text-xs text-gray-500 pt-1 border-t border-gray-100">
+                            <strong>ADR:</strong> US-traded certificate • <strong>Direct:</strong> Native exchange listing
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 )}
-              </h3>
+              </div>
             </div>
             <div className="flex items-center gap-2.5">
               <span className="font-mono bg-gray-100 px-2.5 py-1 rounded-md text-sm font-medium text-gray-700">
@@ -177,7 +213,35 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
                 </span>
               </div>
               
-              {entity.source && (
+              {entity.listingVenue === 'HKEX' && (
+                <div className="pt-3">
+                  <a
+                    href={getHKEXAnnouncementsUrl(entity.ticker)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-red-600 hover:text-red-800 font-medium bg-white px-4 py-3 rounded-xl border border-red-200 hover:border-red-300 w-full justify-center transition-all hover:shadow-sm"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <FileText className="h-5 w-5" />
+                    <span>HKEX Filings</span>
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                  
+                  <a
+                    href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${entity.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 mt-3 px-4 py-3 rounded-xl w-full justify-center transition-all duration-300 bg-white/80 backdrop-blur-sm border border-white/50 shadow-lg hover:shadow-xl hover:bg-white/90 text-gray-700 hover:text-gray-900 font-medium hover:scale-[1.02]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Building2 className="h-5 w-5" />
+                    <span>View Stock Profile</span>
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              )}
+              
+              {entity.listingVenue !== 'HKEX' && entity.source && (
                 <div className="pt-3">
                   <a
                     href={entity.source}
@@ -195,34 +259,7 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
             </>
           )}
 
-          <div className="pt-1">
-            <a
-              href={getOfficialExchangeUrl(entity.ticker, entity.listingVenue)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Building2 className="h-5 w-5" />
-              <span>View on {entity.listingVenue}</span>
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </div>
-          
-          {/* Add HKEX Announcements link for Hong Kong companies */}
-          {entity.listingVenue === 'HKEX' && (
-            <div className="pt-1 mt-1 border-t border-gray-100">
-              <a
-                href={getHKEXAnnouncementsUrl(entity.ticker)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 rounded-full text-xs font-medium hover:bg-red-100 transition-colors"
-                title={`View HKEX announcements${entity.ticker ? ` (Stock: ${entity.ticker.replace('.HK', '').padStart(5, '0')})` : ''}`}
-              >
-                HKEX News
-              </a>
-            </div>
-          )}
+
         </div>
       )}
     </div>
@@ -241,35 +278,212 @@ interface MarketData {
   currency?: string;
 }
 
-type TabType = 'all' | 'holders' | 'prospects';
+type TabType = 'hong-kong' | 'thailand' | 'korea' | 'mainland-china' | 'all';
 
 export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasuryTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [marketData, setMarketData] = useState<Record<string, MarketData>>({});
   const [isLoadingMarketData, setIsLoadingMarketData] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('holders');
+  const [activeTab, setActiveTab] = useState<TabType>('hong-kong');
   const [globalFilter, setGlobalFilter] = useState('');
   const isMobile = useIsMobile();
 
-  // Separate data into holders and prospects
-  const { holders, prospects } = useMemo(() => {
-    const holders = data.filter(entity => entity.btc > 0);
-    const prospects = data.filter(entity => entity.btc === 0);
-    return { holders, prospects };
+  // Separate data by country/region - prioritize listing venue over headquarters
+  const countryData = useMemo(() => {
+    // Hong Kong: All HKEX listings (regardless of HQ location)
+    const hongKong = data.filter(entity => 
+      entity.listingVenue === 'HKEX'
+    );
+    
+    // Mainland China: SSE/SZSE listings + Chinese ADRs on US exchanges
+    const mainlandChina = data.filter(entity => 
+      // Direct mainland China exchanges
+      entity.listingVenue === 'SSE' ||
+      entity.listingVenue === 'SZSE' ||
+      // Chinese companies listed as ADRs on US exchanges (but not HKEX)
+      ((entity.listingVenue === 'NASDAQ' || entity.listingVenue === 'NYSE') && 
+       (entity.hq?.toLowerCase().includes('china') ||
+        entity.hq?.toLowerCase().includes('beijing') ||
+        entity.hq?.toLowerCase().includes('shanghai') ||
+        entity.hq?.toLowerCase().includes('shenzhen'))) ||
+      // Non-exchange listed companies with mainland China HQ (excluding Hong Kong)
+      (entity.listingVenue !== 'HKEX' && 
+       entity.listingVenue !== 'NASDAQ' && 
+       entity.listingVenue !== 'NYSE' &&
+       entity.hq?.toLowerCase().includes('china') && 
+       !entity.hq?.toLowerCase().includes('hong kong'))
+    );
+    
+    // Thailand: Companies with Thai headquarters (excluding those already categorized)
+    const thailand = data.filter(entity => 
+      !hongKong.includes(entity) && 
+      !mainlandChina.includes(entity) &&
+      (entity.hq?.toLowerCase().includes('thailand') ||
+       entity.hq?.toLowerCase().includes('bangkok'))
+    );
+    
+    // Korea: Companies with Korean headquarters (excluding those already categorized)
+    const korea = data.filter(entity => 
+      !hongKong.includes(entity) && 
+      !mainlandChina.includes(entity) &&
+      !thailand.includes(entity) &&
+      (entity.hq?.toLowerCase().includes('korea') ||
+       entity.hq?.toLowerCase().includes('seoul') ||
+       entity.hq?.toLowerCase().includes('south korea'))
+    );
+
+    // Singapore: Companies with Singapore headquarters
+    const singapore = data.filter(entity => 
+      !hongKong.includes(entity) && 
+      !mainlandChina.includes(entity) &&
+      !thailand.includes(entity) &&
+      !korea.includes(entity) &&
+      entity.hq?.toLowerCase().includes('singapore')
+    );
+
+    // India: Companies with Indian headquarters
+    const india = data.filter(entity => 
+      !hongKong.includes(entity) && 
+      !mainlandChina.includes(entity) &&
+      !thailand.includes(entity) &&
+      !korea.includes(entity) &&
+      !singapore.includes(entity) &&
+      (entity.hq?.toLowerCase().includes('india') ||
+       entity.hq?.toLowerCase().includes('mumbai') ||
+       entity.hq?.toLowerCase().includes('delhi') ||
+       entity.hq?.toLowerCase().includes('bangalore'))
+    );
+
+    // Indonesia: Companies with Indonesian headquarters
+    const indonesia = data.filter(entity => 
+      !hongKong.includes(entity) && 
+      !mainlandChina.includes(entity) &&
+      !thailand.includes(entity) &&
+      !korea.includes(entity) &&
+      !singapore.includes(entity) &&
+      !india.includes(entity) &&
+      (entity.hq?.toLowerCase().includes('indonesia') ||
+       entity.hq?.toLowerCase().includes('jakarta'))
+    );
+
+    // Philippines: Companies with Philippine headquarters
+    const philippines = data.filter(entity => 
+      !hongKong.includes(entity) && 
+      !mainlandChina.includes(entity) &&
+      !thailand.includes(entity) &&
+      !korea.includes(entity) &&
+      !singapore.includes(entity) &&
+      !india.includes(entity) &&
+      !indonesia.includes(entity) &&
+      (entity.hq?.toLowerCase().includes('philippines') ||
+       entity.hq?.toLowerCase().includes('manila'))
+    );
+
+    // Vietnam: Companies with Vietnamese headquarters
+    const vietnam = data.filter(entity => 
+      !hongKong.includes(entity) && 
+      !mainlandChina.includes(entity) &&
+      !thailand.includes(entity) &&
+      !korea.includes(entity) &&
+      !singapore.includes(entity) &&
+      !india.includes(entity) &&
+      !indonesia.includes(entity) &&
+      !philippines.includes(entity) &&
+      (entity.hq?.toLowerCase().includes('vietnam') ||
+       entity.hq?.toLowerCase().includes('ho chi minh'))
+    );
+
+    // Cambodia: Companies with Cambodian headquarters
+    const cambodia = data.filter(entity => 
+      !hongKong.includes(entity) && 
+      !mainlandChina.includes(entity) &&
+      !thailand.includes(entity) &&
+      !korea.includes(entity) &&
+      !singapore.includes(entity) &&
+      !india.includes(entity) &&
+      !indonesia.includes(entity) &&
+      !philippines.includes(entity) &&
+      !vietnam.includes(entity) &&
+      (entity.hq?.toLowerCase().includes('cambodia') ||
+       entity.hq?.toLowerCase().includes('phnom penh'))
+    );
+
+    // Turkey: Companies with Turkish headquarters
+    const turkey = data.filter(entity => 
+      !hongKong.includes(entity) && 
+      !mainlandChina.includes(entity) &&
+      !thailand.includes(entity) &&
+      !korea.includes(entity) &&
+      !singapore.includes(entity) &&
+      !india.includes(entity) &&
+      !indonesia.includes(entity) &&
+      !philippines.includes(entity) &&
+      !vietnam.includes(entity) &&
+      !cambodia.includes(entity) &&
+      (entity.hq?.toLowerCase().includes('turkey') ||
+       entity.hq?.toLowerCase().includes('istanbul') ||
+       entity.hq?.toLowerCase().includes('ankara'))
+    );
+
+    return { 
+      hongKong, 
+      mainlandChina, 
+      thailand, 
+      korea, 
+      singapore, 
+      india, 
+      indonesia, 
+      philippines, 
+      vietnam, 
+      cambodia, 
+      turkey 
+    };
   }, [data]);
 
-  // Get filtered data based on active tab
+  // Separate holders and prospects for current country
+  const { holders, prospects } = useMemo(() => {
+    let currentCountryData: TreasuryEntity[] = [];
+    
+    switch (activeTab) {
+      case 'hong-kong':
+        currentCountryData = countryData.hongKong;
+        break;
+      case 'thailand':
+        currentCountryData = countryData.thailand;
+        break;
+      case 'korea':
+        currentCountryData = countryData.korea;
+        break;
+      case 'mainland-china':
+        currentCountryData = countryData.mainlandChina;
+        break;
+      case 'all':
+      default:
+        currentCountryData = data;
+        break;
+    }
+    
+    const holders = currentCountryData.filter(entity => entity.btc > 0);
+    const prospects = currentCountryData.filter(entity => entity.btc === 0);
+    return { holders, prospects };
+  }, [activeTab, countryData, data]);
+
+  // Get filtered data based on active tab (show all companies from selected country by default)
   const filteredData = useMemo(() => {
     switch (activeTab) {
-      case 'holders':
-        return holders;
-      case 'prospects':
-        return prospects;
+      case 'hong-kong':
+        return countryData.hongKong;
+      case 'thailand':
+        return countryData.thailand;
+      case 'korea':
+        return countryData.korea;
+      case 'mainland-china':
+        return countryData.mainlandChina;
       case 'all':
       default:
         return data;
     }
-  }, [activeTab, holders, prospects, data]);
+  }, [activeTab, countryData, data]);
 
   // Reset sorting when tab changes
   useEffect(() => {
@@ -282,13 +496,9 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
 
   // Set default sorting after tab change is complete
   useEffect(() => {
-    if (activeTab === 'holders' && sorting.length === 0) {
-      setSorting([{ id: 'btc', desc: true }]);
-    } else if (activeTab === 'all' && sorting.length === 0) {
-      setSorting([{ id: 'legalName', desc: false }]);
-    }
-    // No sorting needed for prospects tab since it uses a custom view
-  }, [activeTab, sorting.length]);
+    // Always sort by Bitcoin holdings descending, which puts holders first, then prospects
+    setSorting([{ id: 'btc', desc: true }]);
+  }, [activeTab]);
 
   // Fetch market cap data only for entities that don't have it in database
   useEffect(() => {
@@ -326,11 +536,26 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
       {
         id: 'rank',
         header: '#',
-        accessorFn: (_row, i) => i + 1,
         size: 60,
         enableSorting: false,
-        cell: ({ getValue }) => {
-          const rank = getValue() as number;
+        cell: ({ row, table }) => {
+          // Only show ranks for Bitcoin holders, calculate rank based on BTC holdings
+          const entity = row.original;
+          if (entity.btc === 0) {
+            return (
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 text-gray-400 font-medium text-sm border border-gray-200">
+                  —
+                </div>
+              </div>
+            );
+          }
+
+          // Calculate rank among Bitcoin holders only
+          const allData = table.getFilteredRowModel().rows.map(r => r.original);
+          const holders = allData.filter(e => e.btc > 0).sort((a, b) => b.btc - a.btc);
+          const rank = holders.findIndex(e => e.id === entity.id) + 1;
+
           return (
             <div className="text-center">
               <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm ${
@@ -357,41 +582,75 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           </button>
         ),
         accessorKey: 'legalName',
-        cell: ({ row }) => (
-          <div className="py-1">
-            <div className="font-semibold text-gray-900 text-base mb-1">
-              {row.original.listingVenue === 'HKEX' ? (
-                <a
-                  href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${row.original.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-blue-600 transition-colors"
+        cell: ({ row }) => {
+          const isChineseADR = (row.original.listingVenue === 'NASDAQ' || row.original.listingVenue === 'NYSE') && 
+            (row.original.hq?.toLowerCase().includes('china') ||
+             row.original.hq?.toLowerCase().includes('beijing') ||
+             row.original.hq?.toLowerCase().includes('shanghai') ||
+             row.original.hq?.toLowerCase().includes('shenzhen'));
+
+          return (
+            <div className="py-1">
+              <div className="font-semibold text-gray-900 text-base mb-1 flex items-center gap-2">
+                {row.original.listingVenue === 'HKEX' ? (
+                  <a
+                    href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${row.original.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-blue-600 transition-colors"
+                  >
+                    {row.original.legalName}
+                  </a>
+                ) : (
+                  row.original.legalName
+                )}
+                {isChineseADR && (
+                  <div className="flex items-center gap-1">
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs font-semibold bg-orange-50 text-orange-700 border-orange-300 px-1.5 py-0.5"
+                    >
+                      ADR
+                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 cursor-help transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs p-3 text-sm bg-white border border-gray-200 shadow-lg rounded-lg">
+                        <div className="space-y-2">
+                          <div className="font-semibold text-gray-900">American Depositary Receipt (ADR)</div>
+                          <div className="text-gray-700">
+                            This Chinese company trades on US exchanges through ADRs - certificates representing shares of the foreign company.
+                          </div>
+                          <div className="text-xs text-gray-500 pt-1 border-t border-gray-100">
+                            <strong>ADR:</strong> US-traded certificate • <strong>Direct:</strong> Native exchange listing
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-white">
+                  {row.original.ticker}
+                </span>
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs font-medium ${
+                    row.original.listingVenue === 'HKEX' 
+                      ? 'bg-red-50/50 text-red-700 border-red-200' 
+                      : row.original.listingVenue === 'NASDAQ' 
+                      ? 'bg-blue-50/50 text-blue-700 border-blue-200' 
+                      : 'bg-purple-50/50 text-purple-700 border-purple-200'
+                  }`}
                 >
-                  {row.original.legalName}
-                </a>
-              ) : (
-                row.original.legalName
-              )}
+                  {row.original.listingVenue}
+                </Badge>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-white">
-                {row.original.ticker}
-              </span>
-              <Badge 
-                variant="outline" 
-                className={`text-xs font-medium ${
-                  row.original.listingVenue === 'HKEX' 
-                    ? 'bg-red-50/50 text-red-700 border-red-200' 
-                    : row.original.listingVenue === 'NASDAQ' 
-                    ? 'bg-blue-50/50 text-blue-700 border-blue-200' 
-                    : 'bg-purple-50/50 text-purple-700 border-purple-200'
-                }`}
-              >
-                {row.original.listingVenue}
-              </Badge>
-            </div>
-          </div>
-        ),
+          );
+        },
       },
       {
         id: 'btc',
@@ -474,159 +733,13 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
     [btcPrice]
   );
 
-  // Column definitions for prospects (simplified for desktop)
-  const prospectsColumns = useMemo<ColumnDef<TreasuryEntity>[]>(
-    () => [
-      {
-        id: 'prospectRank',
-        header: '#',
-        accessorFn: (_row, i) => i + 1,
-        size: 60,
-        enableSorting: false,
-        cell: ({ getValue }) => (
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 text-gray-600 font-bold text-sm">
-              {getValue() as number}
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'prospectCompany',
-        header: ({ column }) => (
-          <button
-            className="flex items-center gap-1 font-semibold hover:text-gray-700"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Company Name
-            <ArrowUpDown className="h-3 w-3" />
-          </button>
-        ),
-        accessorKey: 'legalName',
-        cell: ({ row }) => (
-          <div className="py-1">
-            <div className="font-semibold text-gray-900 text-base mb-1">
-              {row.original.listingVenue === 'HKEX' ? (
-                <a
-                  href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${row.original.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-blue-600 transition-colors"
-                >
-                  {row.original.legalName}
-                </a>
-              ) : (
-                row.original.legalName
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-white">
-                {row.original.ticker}
-              </span>
-              <Badge 
-                variant="outline" 
-                className={`text-xs font-medium ${
-                  row.original.listingVenue === 'HKEX' 
-                    ? 'bg-red-50/50 text-red-700 border-red-200' 
-                    : row.original.listingVenue === 'NASDAQ' 
-                    ? 'bg-blue-50/50 text-blue-700 border-blue-200' 
-                    : 'bg-purple-50/50 text-purple-700 border-purple-200'
-                }`}
-              >
-                {row.original.listingVenue}
-              </Badge>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'status',
-        header: 'Status',
-        enableSorting: false,
-        cell: () => (
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200/50">
-              <Search className="h-5 w-5 text-amber-600" />
-              <span className="font-medium text-gray-900">Prospect</span>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'interestLink',
-        header: 'Interest Link',
-        enableSorting: false,
-        cell: ({ row }) => {
-          const interestUrl = row.original.interestUrl;
-          const sourceUrl = row.original.source;
-          const linkUrl = interestUrl || sourceUrl;
-          
-          if (!linkUrl) {
-            return <div className="text-center"><span className="text-gray-300">—</span></div>;
-          }
 
-          return (
-            <div className="text-center">
-              <a
-                href={linkUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-50 transition-all duration-200 border border-blue-200/50 shadow-sm hover:shadow-md"
-              >
-                <Info className="h-4 w-4" />
-                <span>More Info</span>
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          );
-        },
-      },
-      {
-        id: 'prospectAnnouncements',
-        header: 'HKEX News',
-        enableSorting: false,
-        cell: ({ row }) => {
-          const { ticker, listingVenue } = row.original;
-          
-          if (listingVenue === 'HKEX') {
-            return (
-              <div className="text-center">
-                <a
-                  href={getHKEXAnnouncementsUrl(ticker)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm text-red-600 rounded-xl text-sm font-medium hover:bg-red-50 transition-all duration-200 border border-red-200/50 shadow-sm hover:shadow-md"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span>HKEX News</span>
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
-            );
-          }
-          
-          return (
-            <div className="text-center">
-              <span className="text-gray-300">—</span>
-            </div>
-          );
-        },
-      },
-    ],
-    []
-  );
 
   // Select columns based on active tab
   const currentColumns = useMemo(() => {
-    if (activeTab === 'prospects') {
-      return prospectsColumns;
-    } else if (activeTab === 'holders') {
-      return holdersColumns;
-    } else {
-      // For 'all' tab, use holders columns
-      return holdersColumns;
-    }
-  }, [activeTab, holdersColumns, prospectsColumns]);
+    // For all country tabs, use holders columns (they show both holders and prospects)
+    return holdersColumns;
+  }, [holdersColumns]);
 
   const table = useReactTable({
     data: filteredData,
@@ -653,7 +766,18 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
             {/* Title and Total */}
             <div className="text-center">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-                Asia's Bitcoin Treasury
+                {activeTab === 'all' 
+                  ? 'Asian Bitcoin Treasury Explorer' 
+                  : activeTab === 'hong-kong' 
+                  ? 'Hong Kong Bitcoin Holdings'
+                  : activeTab === 'mainland-china'
+                  ? 'China Bitcoin Holdings'
+                  : activeTab === 'thailand'
+                  ? 'Thailand Bitcoin Holdings'
+                  : activeTab === 'korea'
+                  ? 'South Korea Bitcoin Holdings'
+                  : 'Asian Bitcoin Corporate Holdings'
+                }
               </h1>
               
               {/* Total Value */}
@@ -675,8 +799,15 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
             {/* Simple Stats Row */}
             <div className="grid grid-cols-3 gap-4 pt-6 border-t border-gray-100">
               <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">{holders.length}</div>
-                <div className="text-sm text-gray-600">Companies</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {activeTab === 'all' 
+                    ? Object.values(countryData).reduce((sum, countries) => sum + countries.filter(c => c.btc > 0).length, 0)
+                    : holders.length
+                  }
+                </div>
+                <div className="text-sm text-gray-600">
+                  {activeTab === 'all' ? 'Global Holders' : 'Companies'}
+                </div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-900">
@@ -685,15 +816,22 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                 <div className="text-sm text-gray-600">of Supply</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">{prospects.length}</div>
-                <div className="text-sm text-gray-600">Prospects</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {activeTab === 'all' 
+                    ? Object.values(countryData).reduce((sum, countries) => sum + countries.filter(c => c.btc === 0).length, 0)
+                    : prospects.length
+                  }
+                </div>
+                <div className="text-sm text-gray-600">
+                  {activeTab === 'all' ? 'Global Prospects' : 'Prospects'}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Mobile Search Bar */}
-        {isMobile && activeTab !== 'prospects' && (
+        {isMobile && (
           <div className="relative">
             <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
               <Search className="h-5 w-5" />
@@ -717,46 +855,71 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           </div>
         )}
 
-        {/* Tab Navigation - Mobile Optimized */}
+        {/* Tab Navigation - Country Based */}
         <div className="space-y-4">
           {/* Mobile Tabs - Horizontal Scroll */}
           {isMobile ? (
             <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide">
               <div className="flex space-x-3 min-w-max pb-2">
                 <button
-                  onClick={() => setActiveTab('holders')}
+                  onClick={() => setActiveTab('hong-kong')}
                   className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 ${
-                    activeTab === 'holders' 
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/25' 
+                    activeTab === 'hong-kong' 
+                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/25' 
                       : 'bg-white text-gray-700 border-2 border-gray-200'
                   }`}
                 >
-                  <span className="mr-2">✔</span>
-                  Active Holders
-                  <span className="ml-2 opacity-75">({holders.length})</span>
+                  <span className="mr-2">🇭🇰</span>
+                  Hong Kong
+                  <span className="ml-2 opacity-75">({countryData.hongKong.length})</span>
                 </button>
                 <button
-                  onClick={() => setActiveTab('prospects')}
+                  onClick={() => setActiveTab('thailand')}
                   className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 ${
-                    activeTab === 'prospects' 
+                    activeTab === 'thailand' 
                       ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/25' 
                       : 'bg-white text-gray-700 border-2 border-gray-200'
                   }`}
                 >
-                  <span className="mr-2">🔍</span>
-                  Prospects
-                  <span className="ml-2 opacity-75">({prospects.length})</span>
+                  <span className="mr-2">🇹🇭</span>
+                  Thailand
+                  <span className="ml-2 opacity-75">({countryData.thailand.length})</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('korea')}
+                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 ${
+                    activeTab === 'korea' 
+                      ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-600/25' 
+                      : 'bg-white text-gray-700 border-2 border-gray-200'
+                  }`}
+                >
+                  <span className="mr-2">🇰🇷</span>
+                  Korea
+                  <span className="ml-2 opacity-75">({countryData.korea.length})</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('mainland-china')}
+                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 ${
+                    activeTab === 'mainland-china' 
+                      ? 'bg-gradient-to-r from-yellow-600 to-yellow-700 text-white shadow-lg shadow-yellow-600/25' 
+                      : 'bg-white text-gray-700 border-2 border-gray-200'
+                  }`}
+                >
+                  <span className="mr-2">🇨🇳</span>
+                  China
+                  <span className="ml-2 opacity-75">({countryData.mainlandChina.length})</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('all')}
                   className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 ${
                     activeTab === 'all' 
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/25' 
+                      ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-600/25' 
                       : 'bg-white text-gray-700 border-2 border-gray-200'
                   }`}
                 >
-                  All Companies
-                  <span className="ml-2 opacity-75">({data.length})</span>
+                  <span className="mr-2">🌏</span>
+                  All Countries
+                  <span className="ml-2 opacity-75">({Object.values(countryData).reduce((sum, countries) => sum + countries.length, 0)})</span>
                 </button>
               </div>
             </div>
@@ -764,28 +927,52 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
             <div className="flex justify-between items-center">
               <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg border border-gray-200">
                 <Button
-                  variant={activeTab === 'holders' ? 'secondary' : 'ghost'}
+                  variant={activeTab === 'hong-kong' ? 'secondary' : 'ghost'}
                   size="sm"
-                  onClick={() => setActiveTab('holders')}
+                  onClick={() => setActiveTab('hong-kong')}
                   className={
-                    activeTab === 'holders' 
+                    activeTab === 'hong-kong' 
                       ? 'bg-white text-gray-900 font-semibold shadow-sm hover:bg-gray-50 border border-gray-300 transition-all duration-200' 
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/50 transition-all duration-200'
                   }
                 >
-                  ✔ Active Holders ({holders.length})
+                  🇭🇰 Hong Kong ({countryData.hongKong.length})
                 </Button>
                 <Button
-                  variant={activeTab === 'prospects' ? 'secondary' : 'ghost'}
+                  variant={activeTab === 'thailand' ? 'secondary' : 'ghost'}
                   size="sm"
-                  onClick={() => setActiveTab('prospects')}
+                  onClick={() => setActiveTab('thailand')}
                   className={
-                    activeTab === 'prospects' 
+                    activeTab === 'thailand' 
                       ? 'bg-white text-gray-900 font-semibold shadow-sm hover:bg-gray-50 border border-gray-300 transition-all duration-200' 
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/50 transition-all duration-200'
                   }
                 >
-                  🔍 Prospects ({prospects.length})
+                  🇹🇭 Thailand ({countryData.thailand.length})
+                </Button>
+                <Button
+                  variant={activeTab === 'korea' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveTab('korea')}
+                  className={
+                    activeTab === 'korea' 
+                      ? 'bg-white text-gray-900 font-semibold shadow-sm hover:bg-gray-50 border border-gray-300 transition-all duration-200' 
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/50 transition-all duration-200'
+                  }
+                >
+                  🇰🇷 Korea ({countryData.korea.length})
+                </Button>
+                <Button
+                  variant={activeTab === 'mainland-china' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveTab('mainland-china')}
+                  className={
+                    activeTab === 'mainland-china' 
+                      ? 'bg-white text-gray-900 font-semibold shadow-sm hover:bg-gray-50 border border-gray-300 transition-all duration-200' 
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/50 transition-all duration-200'
+                  }
+                >
+                  🇨🇳 China ({countryData.mainlandChina.length})
                 </Button>
                 <Button
                   variant={activeTab === 'all' ? 'secondary' : 'ghost'}
@@ -797,52 +984,67 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/50 transition-all duration-200'
                   }
                 >
-                  All Companies ({data.length})
+                  🌏 All Countries ({Object.values(countryData).reduce((sum, countries) => sum + countries.length, 0)})
                 </Button>
               </div>
 
               {/* Desktop Search */}
-              {activeTab !== 'prospects' && (
-                <div className="relative w-64">
-                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                    <Search className="h-4 w-4" />
-                  </div>
-                  <Input
-                    type="text"
-                    placeholder="Search companies..."
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    className="pl-9 pr-9 h-9 text-sm"
-                  />
-                  {globalFilter && (
-                    <button
-                      onClick={() => setGlobalFilter('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
+              <div className="relative w-64">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <Search className="h-4 w-4" />
                 </div>
-              )}
+                <Input
+                  type="text"
+                  placeholder="Search companies..."
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  className="pl-9 pr-9 h-9 text-sm"
+                />
+                {globalFilter && (
+                  <button
+                    onClick={() => setGlobalFilter('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Mobile Cards / Desktop Table / Prospects View */}
+        {/* Mobile Cards / Desktop Table / Country Explorer */}
         {(() => {
-          if (activeTab === 'prospects') {
-            return <ProspectsView btcPrice={btcPrice} prospects={prospects} />;
+          if (activeTab === 'all') {
+            return (
+              <CountryExplorer 
+                countryData={countryData} 
+                btcPrice={btcPrice}
+              />
+            );
           } else if (isMobile) {
             return (
           <div className="space-y-3">
-            {table.getRowModel().rows.map((row, index) => (
-              <MobileCard
-                key={row.id}
-                entity={row.original}
-                btcPrice={btcPrice}
-                rank={activeTab === 'holders' ? index + 1 : undefined}
-              />
-            ))}
+            {table.getRowModel().rows.map((row) => {
+              // Calculate rank for Bitcoin holders only
+              const entity = row.original;
+              let rank: number | undefined = undefined;
+              
+              if (entity.btc > 0) {
+                const allData = table.getFilteredRowModel().rows.map(r => r.original);
+                const holders = allData.filter(e => e.btc > 0).sort((a, b) => b.btc - a.btc);
+                rank = holders.findIndex(e => e.id === entity.id) + 1;
+              }
+
+              return (
+                <MobileCard
+                  key={row.id}
+                  entity={entity}
+                  btcPrice={btcPrice}
+                  rank={rank}
+                />
+              );
+            })}
             
             {table.getRowModel().rows.length === 0 && (
               <div className="text-center py-16 bg-white rounded-2xl border-2 border-gray-100 shadow-sm">
@@ -892,22 +1094,33 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                     ))}
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {table.getRowModel().rows.map((row, index) => (
-                      <tr
-                        key={row.id}
-                        className={`group hover:bg-white/80 transition-all duration-200 ${
-                          activeTab === 'holders' && index < 3 
-                            ? 'bg-gradient-to-r from-yellow-50/30 to-orange-50/30' 
-                            : ''
-                        }`}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <td key={cell.id} className="px-6 py-5 whitespace-nowrap">
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
+                    {table.getRowModel().rows.map((row) => {
+                      // Calculate if this is a top 3 Bitcoin holder
+                      const entity = row.original;
+                      let isTop3 = false;
+                      
+                      if (entity.btc > 0) {
+                        const allData = table.getFilteredRowModel().rows.map(r => r.original);
+                        const holders = allData.filter(e => e.btc > 0).sort((a, b) => b.btc - a.btc);
+                        const rank = holders.findIndex(e => e.id === entity.id) + 1;
+                        isTop3 = rank <= 3;
+                      }
+
+                      return (
+                        <tr
+                          key={row.id}
+                          className={`group hover:bg-white/80 transition-all duration-200 ${
+                            isTop3 ? 'bg-gradient-to-r from-yellow-50/30 to-orange-50/30' : ''
+                          }`}
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <td key={cell.id} className="px-6 py-5 whitespace-nowrap">
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
