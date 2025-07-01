@@ -32,13 +32,31 @@ const MOCK_MARKET_CAPS: Record<string, number> = {
   '1723.HK': 2870759, // Moon Nation
 };
 
-// Fetch from Twelve Data API (primary source)
+// Rate limiting tracking
+const lastTwelveDataCall = { timestamp: 0, count: 0 };
+const TWELVE_DATA_LIMIT = 6; // Conservative limit
+const TWELVE_DATA_WINDOW = 60 * 1000; // 1 minute
+
+// Fetch from Twelve Data API (primary source) with rate limiting
 async function fetchFromTwelveData(ticker: string, venue: string): Promise<MarketData | null> {
   try {
     const apiKey = process.env.TWELVE_DATA_API_KEY;
     if (!apiKey) {
       console.error('TWELVE_DATA_API_KEY not found');
       return await fetchFromYahoo(ticker, venue); // Fallback to Yahoo
+    }
+    
+    // Check rate limiting
+    const now = Date.now();
+    if (now - lastTwelveDataCall.timestamp < TWELVE_DATA_WINDOW) {
+      if (lastTwelveDataCall.count >= TWELVE_DATA_LIMIT) {
+        console.warn(`Twelve Data rate limit reached, skipping ${ticker}`);
+        return await fetchFromYahoo(ticker, venue);
+      }
+      lastTwelveDataCall.count++;
+    } else {
+      lastTwelveDataCall.timestamp = now;
+      lastTwelveDataCall.count = 1;
     }
     
     // Convert ticker format for Twelve Data
@@ -55,7 +73,11 @@ async function fetchFromTwelveData(ticker: string, venue: string): Promise<Marke
     const response = await fetch(quoteUrl);
     
     if (!response.ok) {
-      console.error(`Twelve Data error for ${ticker}: ${response.status}`);
+      if (response.status === 429) {
+        console.warn(`Twelve Data rate limited for ${ticker}, falling back to Yahoo`);
+      } else {
+        console.error(`Twelve Data error for ${ticker}: ${response.status}`);
+      }
       return await fetchFromYahoo(ticker, venue); // Fallback to Yahoo
     }
     
@@ -68,21 +90,9 @@ async function fetchFromTwelveData(ticker: string, venue: string): Promise<Marke
     
     const price = parseFloat(data.close) || 0;
     
-    // Try to get market cap from statistics endpoint
-    let marketCap = 0;
-    try {
-      const statsUrl = `https://api.twelvedata.com/statistics?symbol=${formattedTicker}&apikey=${apiKey}`;
-      const statsResponse = await fetch(statsUrl);
-      
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        if (statsData.statistics?.market_capitalization) {
-          marketCap = parseFloat(statsData.statistics.market_capitalization) || 0;
-        }
-      }
-    } catch (statsError) {
-      console.warn(`Could not fetch statistics for ${ticker}:`, statsError);
-    }
+    // Skip statistics endpoint to reduce API calls and avoid rate limits
+    // Focus on getting basic price data
+    const marketCap = 0; // Will be calculated or fetched from fallback if needed
     
     return {
       ticker,
@@ -184,27 +194,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Tickers and venues arrays must have same length' }, { status: 400 });
     }
     
-    // Fetch market data for each ticker with fallback
-    const marketDataPromises = tickers.map(async (ticker, index): Promise<MarketData> => {
-      const venue = venues[index];
-      
-      // Try Twelve Data first
-      const twelveData = await fetchFromTwelveData(ticker, venue);
-      if (twelveData?.marketCap) {
-        return twelveData;
-      }
-      
-      // Try fallback if Yahoo fails
-      const fallbackData = await fetchFallbackData(ticker);
-      if (fallbackData?.marketCap) {
-        return fallbackData;
-      }
-      
-      // Return empty data if all sources fail
-      return { ticker };
-    });
+    // Fetch market data for each ticker with fallback - process sequentially to avoid rate limits
+    const results: MarketData[] = [];
     
-    const results = await Promise.all(marketDataPromises);
+    for (let i = 0; i < tickers.length; i++) {
+      const ticker = tickers[i];
+      const venue = venues[i];
+      
+      try {
+        // Try Twelve Data first
+        const twelveData = await fetchFromTwelveData(ticker, venue);
+        if (twelveData?.price) {
+          results.push(twelveData);
+        } else {
+          // Try fallback if Twelve Data fails
+          const fallbackData = await fetchFallbackData(ticker);
+          if (fallbackData?.marketCap) {
+            results.push(fallbackData);
+          } else {
+            // Return empty data if all sources fail
+            results.push({ ticker });
+          }
+        }
+        
+        // Add delay between requests to avoid overwhelming APIs
+        if (i < tickers.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      } catch (error) {
+        console.error(`Failed to fetch ${ticker}:`, error);
+        results.push({ ticker });
+      }
+    }
     
     // Create a map for easy lookup
     const marketDataMap = results.reduce((acc, data) => {

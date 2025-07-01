@@ -50,7 +50,7 @@ const MiniChart = ({ trend }: { trend: 'up' | 'down' | 'flat' }) => {
   );
 };
 
-// Mobile Card Component
+// Mobile Card Component - Fully optimized for touch interfaces
 const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPrice: number; rank?: number }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const isHolder = entity.btc > 0;
@@ -61,28 +61,28 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
      entity.hq?.toLowerCase().includes('shenzhen'));
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-gray-200">
-      {/* Card Header */}
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-gray-200 active:scale-[0.98]">
+      {/* Card Header - Optimized for mobile touch */}
       <div 
-        className="p-5 cursor-pointer"
+        className="p-4 sm:p-5 cursor-pointer active:bg-gray-50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-start justify-between mb-4">
-          <div className="flex-1 pr-3">
-            <div className="flex items-start gap-2.5 mb-2">
+          <div className="flex-1 pr-3 min-w-0">
+            <div className="flex items-start gap-2 sm:gap-2.5 mb-3">
               {rank && rank <= 3 && (
-                <span className="text-2xl flex-shrink-0">
+                <span className="text-xl sm:text-2xl flex-shrink-0">
                   {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
                 </span>
               )}
-              <div className="flex-1">
-                <h3 className="font-bold text-gray-900 text-xl leading-tight mb-1">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-gray-900 text-lg sm:text-xl leading-tight mb-1 truncate">
                   {entity.listingVenue === 'HKEX' ? (
                     <a
                       href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${entity.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:text-blue-600 transition-colors"
+                      className="hover:text-blue-600 transition-colors active:text-blue-700"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {entity.legalName}
@@ -101,10 +101,13 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
                     </Badge>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info 
-                          className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 cursor-help transition-colors" 
+                        <button 
+                          className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors" 
                           onClick={(e) => e.stopPropagation()}
-                        />
+                          aria-label="ADR information"
+                        >
+                          <Info className="h-3.5 w-3.5 text-gray-400" />
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs p-3 text-sm bg-white border border-gray-200 shadow-lg rounded-lg">
                         <div className="space-y-2">
@@ -122,7 +125,7 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
               <span className="font-mono bg-gray-100 px-2.5 py-1 rounded-md text-sm font-medium text-gray-700">
                 {entity.ticker}
               </span>
@@ -138,36 +141,42 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
               >
                 {entity.listingVenue}
               </Badge>
+              <span className="text-xs text-gray-500 truncate">{entity.hq}</span>
             </div>
           </div>
-          <ChevronDown 
-            className={`h-6 w-6 text-gray-400 transition-transform duration-200 flex-shrink-0 ${
-              isExpanded ? 'rotate-180' : ''
-            }`}
-          />
+          <button 
+            className="h-10 w-10 rounded-lg flex items-center justify-center hover:bg-gray-100 active:bg-gray-200 transition-colors flex-shrink-0"
+            aria-label={isExpanded ? "Collapse details" : "Expand details"}
+          >
+            <ChevronDown 
+              className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${
+                isExpanded ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
         </div>
 
-        {/* Key Metrics */}
+        {/* Key Metrics - Mobile optimized */}
         {isHolder ? (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-xl p-4 border border-orange-200/50">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-xl p-3 sm:p-4 border border-orange-200/50">
               <div className="flex items-center gap-1.5 text-sm text-orange-600 mb-2 font-medium">
                 <Bitcoin className="h-4 w-4" />
                 <span>Holdings</span>
               </div>
-              <div className="font-mono font-bold text-orange-700 text-lg">
+              <div className="font-mono font-bold text-orange-700 text-lg sm:text-xl">
                 {numeral(entity.btc).format('0,0')} BTC
               </div>
               <div className="text-xs text-orange-600 mt-1">
                 ₿ {numeral(entity.btc).format('0.00a')}
               </div>
             </div>
-            <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl p-4 border border-green-200/50">
+            <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl p-3 sm:p-4 border border-green-200/50">
               <div className="flex items-center gap-1.5 text-sm text-green-600 mb-2 font-medium">
                 <DollarSign className="h-4 w-4" />
                 <span>USD Value</span>
               </div>
-              <div className="font-bold text-green-700 text-lg">
+              <div className="font-bold text-green-700 text-lg sm:text-xl">
                 {numeral(entity.btc * btcPrice).format('$0.0a')}
               </div>
               <div className="text-xs text-green-600 mt-1">
@@ -176,8 +185,8 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl p-4 border border-gray-200/50">
-            <Badge variant="outline" className="text-orange-600 bg-orange-50 border-orange-300 font-semibold px-3 py-1.5">
+          <div className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl p-3 sm:p-4 border border-gray-200/50 gap-3">
+            <Badge variant="outline" className="text-orange-600 bg-orange-50 border-orange-300 font-semibold px-3 py-1.5 text-sm">
               🔍 Prospect Company
             </Badge>
             {entity.interestUrl && (
@@ -185,81 +194,80 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
                 href={entity.interestUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1.5 transition-colors"
+                className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1.5 transition-colors py-2 px-3 rounded-lg hover:bg-blue-50 active:bg-blue-100"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Info className="h-4 w-4" />
-                <span>Info</span>
+                <span className="text-sm">Info</span>
               </a>
             )}
           </div>
         )}
       </div>
 
-      {/* Expandable Details */}
+      {/* Expandable Details - Mobile optimized */}
       {isExpanded && (
-        <div className="border-t border-gray-100 px-5 py-4 bg-gray-50/50 space-y-3.5">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600 font-medium">Headquarters</span>
-            <span className="font-semibold text-gray-900">{entity.hq}</span>
+        <div className="border-t border-gray-100 px-4 sm:px-5 py-4 bg-gray-50/50 space-y-4">
+          <div className="flex items-center justify-between py-2">
+            <span className="text-gray-600 font-medium text-sm">Headquarters</span>
+            <span className="font-semibold text-gray-900 text-sm text-right">{entity.hq}</span>
           </div>
           
           {isHolder && (
             <>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 font-medium">Last Disclosed</span>
-                <span className="font-semibold text-gray-900">
+              <div className="flex items-center justify-between py-2">
+                <span className="text-gray-600 font-medium text-sm">Last Disclosed</span>
+                <span className="font-semibold text-gray-900 text-sm">
                   {dayjs(entity.lastDisclosed).format('MMM DD, YYYY')}
                 </span>
               </div>
               
-              {entity.listingVenue === 'HKEX' && (
-                <div className="pt-3">
-                  <a
-                    href={getHKEXAnnouncementsUrl(entity.ticker)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-red-600 hover:text-red-800 font-medium bg-white px-4 py-3 rounded-xl border border-red-200 hover:border-red-300 w-full justify-center transition-all hover:shadow-sm"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <FileText className="h-5 w-5" />
-                    <span>HKEX Filings</span>
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                  
-                  <a
-                    href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${entity.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 mt-3 px-4 py-3 rounded-xl w-full justify-center transition-all duration-300 bg-white/80 backdrop-blur-sm border border-white/50 shadow-lg hover:shadow-xl hover:bg-white/90 text-gray-700 hover:text-gray-900 font-medium hover:scale-[1.02]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Building2 className="h-5 w-5" />
-                    <span>View Stock Profile</span>
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </div>
-              )}
-              
-              {entity.listingVenue !== 'HKEX' && entity.source && (
-                <div className="pt-3">
+              {/* Action buttons - Mobile optimized */}
+              <div className="pt-2 space-y-3">
+                {entity.listingVenue === 'HKEX' && (
+                  <>
+                    <a
+                      href={getHKEXAnnouncementsUrl(entity.ticker)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-red-600 hover:text-red-800 font-medium bg-white px-4 py-3 rounded-xl border border-red-200 hover:border-red-300 w-full justify-center transition-all hover:shadow-sm active:scale-[0.98]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <FileText className="h-5 w-5" />
+                      <span>HKEX Filings</span>
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                    
+                    <a
+                      href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${entity.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-3 rounded-xl w-full justify-center transition-all duration-300 bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg hover:shadow-xl hover:bg-white/90 text-gray-700 hover:text-gray-900 font-medium active:scale-[0.98]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Building2 className="h-5 w-5" />
+                      <span>View Stock Profile</span>
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </>
+                )}
+                
+                {entity.listingVenue !== 'HKEX' && entity.source && (
                   <a
                     href={entity.source}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium bg-white px-4 py-3 rounded-xl border border-blue-200 hover:border-blue-300 w-full justify-center transition-all hover:shadow-sm"
+                    className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium bg-white px-4 py-3 rounded-xl border border-blue-200 hover:border-blue-300 w-full justify-center transition-all hover:shadow-sm active:scale-[0.98]"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <FileText className="h-5 w-5" />
                     <span>Latest Bitcoin Filing</span>
                     <ExternalLink className="h-4 w-4" />
                   </a>
-                </div>
-              )}
+                )}
+              </div>
             </>
           )}
-
-
         </div>
       )}
     </div>
@@ -830,26 +838,35 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           </div>
         </div>
 
-        {/* Mobile Search Bar */}
+        {/* Mobile Search Bar - Enhanced for touch */}
         {isMobile && (
           <div className="relative">
-            <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+            <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
               <Search className="h-5 w-5" />
             </div>
             <Input
               type="text"
-              placeholder="Search companies..."
+              placeholder="Search companies, tickers, or locations..."
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              className="w-full pl-12 pr-12 py-4 text-base bg-white border-2 border-gray-200 rounded-2xl shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
-              style={{ fontSize: '16px' }} // Prevent zoom on iOS
+              className="w-full pl-12 pr-12 py-4 text-base bg-white border-2 border-gray-200 rounded-2xl shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200 touch-manipulation"
+              style={{ 
+                fontSize: '16px', // Prevent zoom on iOS
+                WebkitAppearance: 'none', // Remove iOS styling
+                borderRadius: '16px' // Consistent rounded corners
+              }}
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck="false"
             />
             {globalFilter && (
               <button
                 onClick={() => setGlobalFilter('')}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100 active:bg-gray-200"
+                aria-label="Clear search"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -857,17 +874,24 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
 
         {/* Tab Navigation - Country Based */}
         <div className="space-y-4">
-          {/* Mobile Tabs - Horizontal Scroll */}
+          {/* Mobile Tabs - Enhanced for touch with smooth scrolling */}
           {isMobile ? (
-            <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide">
+            <div 
+              className="overflow-x-auto -mx-4 px-4 scrollbar-hide"
+              style={{
+                scrollBehavior: 'smooth',
+                WebkitOverflowScrolling: 'touch'
+              }}
+            >
               <div className="flex space-x-3 min-w-max pb-2">
                 <button
                   onClick={() => setActiveTab('hong-kong')}
-                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 ${
+                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 touch-manipulation active:scale-95 ${
                     activeTab === 'hong-kong' 
                       ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/25' 
-                      : 'bg-white text-gray-700 border-2 border-gray-200'
+                      : 'bg-white text-gray-700 border-2 border-gray-200 active:bg-gray-50'
                   }`}
+                  aria-pressed={activeTab === 'hong-kong'}
                 >
                   <span className="mr-2">🇭🇰</span>
                   Hong Kong
@@ -875,11 +899,12 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                 </button>
                 <button
                   onClick={() => setActiveTab('thailand')}
-                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 ${
+                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 touch-manipulation active:scale-95 ${
                     activeTab === 'thailand' 
                       ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/25' 
-                      : 'bg-white text-gray-700 border-2 border-gray-200'
+                      : 'bg-white text-gray-700 border-2 border-gray-200 active:bg-gray-50'
                   }`}
+                  aria-pressed={activeTab === 'thailand'}
                 >
                   <span className="mr-2">🇹🇭</span>
                   Thailand
@@ -887,11 +912,12 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                 </button>
                 <button
                   onClick={() => setActiveTab('korea')}
-                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 ${
+                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 touch-manipulation active:scale-95 ${
                     activeTab === 'korea' 
                       ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-600/25' 
-                      : 'bg-white text-gray-700 border-2 border-gray-200'
+                      : 'bg-white text-gray-700 border-2 border-gray-200 active:bg-gray-50'
                   }`}
+                  aria-pressed={activeTab === 'korea'}
                 >
                   <span className="mr-2">🇰🇷</span>
                   Korea
@@ -899,11 +925,12 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                 </button>
                 <button
                   onClick={() => setActiveTab('mainland-china')}
-                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 ${
+                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 touch-manipulation active:scale-95 ${
                     activeTab === 'mainland-china' 
                       ? 'bg-gradient-to-r from-yellow-600 to-yellow-700 text-white shadow-lg shadow-yellow-600/25' 
-                      : 'bg-white text-gray-700 border-2 border-gray-200'
+                      : 'bg-white text-gray-700 border-2 border-gray-200 active:bg-gray-50'
                   }`}
+                  aria-pressed={activeTab === 'mainland-china'}
                 >
                   <span className="mr-2">🇨🇳</span>
                   China
@@ -911,11 +938,12 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                 </button>
                 <button
                   onClick={() => setActiveTab('all')}
-                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 ${
+                  className={`px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 touch-manipulation active:scale-95 ${
                     activeTab === 'all' 
                       ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-600/25' 
-                      : 'bg-white text-gray-700 border-2 border-gray-200'
+                      : 'bg-white text-gray-700 border-2 border-gray-200 active:bg-gray-50'
                   }`}
+                  aria-pressed={activeTab === 'all'}
                 >
                   <span className="mr-2">🌏</span>
                   All Countries

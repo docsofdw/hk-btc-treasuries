@@ -77,7 +77,8 @@ export default function FilingsPage() {
     }
   };
 
-  const filings = data?.filings || [];
+  // Memoize filings to prevent unnecessary re-renders
+  const filings = useMemo(() => data?.filings || [], [data?.filings]);
 
   const filteredFilings = useMemo(() => {
     return filings.filter(filing => {

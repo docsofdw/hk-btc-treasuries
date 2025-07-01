@@ -174,4 +174,94 @@ If you prefer to update files manually rather than using git, here are the key c
 - `.env.example` - Environment variable template with warnings
 - `.github/workflows/secret-scan.yml` - Automated secret scanning
 
-All the code is already in your project, you just need to apply the database migration and optionally deploy the edge function! 
+All the code is already in your project, you just need to apply the database migration and optionally deploy the edge function!
+
+## API Rate Limiting & Management
+
+### Current Issues & Solutions
+
+The application uses multiple market data APIs that have rate limits:
+
+#### Twelve Data API
+- **Free Tier Limit**: 8 requests/minute, 800 requests/day
+- **Issue**: Exceeding rate limits causes 429 errors
+- **Solution**: Implemented conservative rate limiting (6 req/min) with fallbacks
+
+#### Yahoo Finance API  
+- **Limit**: Varies, often returns 429 errors under load
+- **Solution**: Used as fallback with delays between requests
+
+#### API Management Best Practices
+
+1. **Rate Limiting Strategy**:
+   ```typescript
+   // Conservative limits implemented in market-data-fetcher.ts
+   const rateLimiters = {
+     twelveData: new RateLimiter({ maxRequests: 6, windowMs: 60 * 1000 }),
+     yahoo: new RateLimiter({ maxRequests: 50, windowMs: 60 * 60 * 1000 })
+   };
+   ```
+
+2. **Sequential Processing**:
+   - Changed from parallel to sequential API calls
+   - Added delays between requests (200ms-2000ms)
+   - Reduced batch sizes from 5 to 3
+
+3. **Fallback Chain**:
+   - Primary: Twelve Data → Secondary: Yahoo Finance → Tertiary: Mock data
+   - Graceful degradation when APIs fail
+
+4. **Caching Strategy**:
+   - 30-minute TTL for market data
+   - Reduces API calls by serving cached responses
+
+### Environment Variables Required
+
+```bash
+# Market Data APIs
+TWELVE_DATA_API_KEY=your_twelve_data_key
+ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
+FINNHUB_API_KEY=your_finnhub_key
+POLYGON_API_KEY=your_polygon_key
+
+# For production, consider upgrading API plans:
+# - Twelve Data: Professional plan ($79/month) for 5000 req/min
+# - Alpha Vantage: Premium plan for higher limits
+```
+
+### Monitoring & Alerts
+
+1. **API Success Rate Monitoring**:
+   ```typescript
+   // Implemented in market-data-fetcher.ts
+   console.log(`Market data fetch: ${successCount}/${total} successful`);
+   ```
+
+2. **Rate Limit Tracking**:
+   - Added rate limit counters per API
+   - Automatic fallback when limits exceeded
+
+3. **Recommended Alerts**:
+   - API success rate < 50%
+   - Rate limit exceeded notifications
+   - API key expiration warnings
+
+### Production Recommendations
+
+1. **Upgrade API Plans**:
+   - Twelve Data Professional: $79/month (5000 req/min)
+   - Consider multiple API keys for load balancing
+
+2. **Implement Circuit Breakers**:
+   - Temporary disable failing APIs
+   - Automatic recovery after cooldown
+
+3. **Add Request Queuing**:
+   - Queue requests during high traffic
+   - Process during off-peak hours
+
+4. **Cache Optimization**:
+   - Redis for distributed caching
+   - Longer TTL for less volatile data
+``` 
+</rewritten_file>

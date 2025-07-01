@@ -1,12 +1,12 @@
 import { RateLimiter } from '../rate-limiter';
 
-// Configure rate limiters for each API
+// Configure rate limiters for each API - More conservative limits
 const rateLimiters = {
-  finnhub: new RateLimiter({ maxRequests: 60, windowMs: 60 * 1000, name: 'Finnhub' }),
-  alphaVantage: new RateLimiter({ maxRequests: 5, windowMs: 60 * 1000, name: 'AlphaVantage' }),
-  twelveData: new RateLimiter({ maxRequests: 8, windowMs: 60 * 1000, name: 'TwelveData' }),
-  yahoo: new RateLimiter({ maxRequests: 100, windowMs: 60 * 60 * 1000, name: 'Yahoo' }),
-  polygon: new RateLimiter({ maxRequests: 5, windowMs: 60 * 1000, name: 'Polygon' })
+  finnhub: new RateLimiter({ maxRequests: 50, windowMs: 60 * 1000, name: 'Finnhub' }),
+  alphaVantage: new RateLimiter({ maxRequests: 4, windowMs: 60 * 1000, name: 'AlphaVantage' }),
+  twelveData: new RateLimiter({ maxRequests: 6, windowMs: 60 * 1000, name: 'TwelveData' }), // Reduced from 8 to 6
+  yahoo: new RateLimiter({ maxRequests: 50, windowMs: 60 * 60 * 1000, name: 'Yahoo' }), // More conservative
+  polygon: new RateLimiter({ maxRequests: 4, windowMs: 60 * 1000, name: 'Polygon' })
 };
 
 interface MarketData {
@@ -174,30 +174,57 @@ export class MarketDataFetcher {
       formattedTicker = ticker.replace('.SZ', ':SZSE');
     }
 
-    const [quoteResponse, statsResponse] = await Promise.all([
-      fetch(`https://api.twelvedata.com/quote?symbol=${formattedTicker}&apikey=${apiKey}`),
-      fetch(`https://api.twelvedata.com/statistics?symbol=${formattedTicker}&apikey=${apiKey}`)
-    ]);
+    // Try quote endpoint first with error handling
+    try {
+      const quoteResponse = await fetch(`https://api.twelvedata.com/quote?symbol=${formattedTicker}&apikey=${apiKey}`);
+      
+      if (!quoteResponse.ok) {
+        if (quoteResponse.status === 429) {
+          console.warn(`TwelveData rate limited for ${ticker}, skipping...`);
+          throw new Error(`Rate limited`);
+        }
+        throw new Error(`TwelveData API error: ${quoteResponse.status}`);
+      }
 
-    if (!quoteResponse.ok) {
-      throw new Error(`TwelveData API error: ${quoteResponse.status}`);
+      const quote = await quoteResponse.json();
+      
+      // Check for API error messages
+      if (quote.status === 'error') {
+        console.warn(`TwelveData API error for ${ticker}:`, quote.message);
+        throw new Error(quote.message);
+      }
+
+      const price = parseFloat(quote.close) || 0;
+      
+      // Try to get market cap from statistics endpoint with error handling
+      let marketCap = 0;
+      let sharesOutstanding = 0;
+      
+      try {
+        const statsResponse = await fetch(`https://api.twelvedata.com/statistics?symbol=${formattedTicker}&apikey=${apiKey}`);
+        if (statsResponse.ok) {
+          const stats = await statsResponse.json();
+          if (stats.statistics && !stats.status) {
+            marketCap = parseFloat(stats.statistics.market_capitalization) || 0;
+            sharesOutstanding = parseFloat(stats.statistics.shares_outstanding) || 0;
+          }
+        }
+      } catch (statsError) {
+        console.warn(`Could not fetch statistics for ${ticker}, using price only`);
+      }
+
+      return {
+        price,
+        marketCap: marketCap || (price * sharesOutstanding),
+        sharesOutstanding,
+        ticker,
+        lastUpdated: new Date().toISOString(),
+        source: 'twelveData'
+      };
+    } catch (error) {
+      console.error(`TwelveData error for ${ticker}:`, error instanceof Error ? error.message : error);
+      throw error;
     }
-
-    const quote = await quoteResponse.json();
-    const stats = statsResponse.ok ? await statsResponse.json() : { statistics: {} };
-
-    const price = parseFloat(quote.close) || 0;
-    const marketCap = parseFloat(stats.statistics?.market_capitalization) || 0;
-    const sharesOutstanding = parseFloat(stats.statistics?.shares_outstanding) || 0;
-
-    return {
-      price,
-      marketCap: marketCap || (price * sharesOutstanding),
-      sharesOutstanding,
-      ticker,
-      lastUpdated: new Date().toISOString(),
-      source: 'twelveData'
-    };
   }
 
   private async fetchAlphaVantage(ticker: string): Promise<MarketData | null> {
@@ -292,27 +319,28 @@ export class MarketDataFetcher {
   async batchFetchMarketData(tickers: string[]): Promise<Map<string, MarketData | null>> {
     const results = new Map<string, MarketData | null>();
     
-    // Process in batches to avoid overwhelming the APIs
-    const batchSize = 5;
+    // Process in smaller batches to avoid overwhelming the APIs
+    const batchSize = 3; // Reduced from 5 to 3
     for (let i = 0; i < tickers.length; i += batchSize) {
       const batch = tickers.slice(i, i + batchSize);
-      const promises = batch.map(ticker => 
-        this.fetchMarketData(ticker)
-          .then(data => ({ ticker, data }))
-          .catch(error => {
-            console.error(`Failed to fetch ${ticker}:`, error);
-            return { ticker, data: null };
-          })
-      );
-
-      const batchResults = await Promise.all(promises);
-      for (const { ticker, data } of batchResults) {
-        results.set(ticker, data);
+      
+      // Process batch sequentially to avoid rate limits
+      for (const ticker of batch) {
+        try {
+          const data = await this.fetchMarketData(ticker);
+          results.set(ticker, data);
+          
+          // Add delay between individual requests within batch
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          console.error(`Failed to fetch ${ticker}:`, error);
+          results.set(ticker, null);
+        }
       }
 
-      // Small delay between batches
+      // Longer delay between batches
       if (i + batchSize < tickers.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
 
