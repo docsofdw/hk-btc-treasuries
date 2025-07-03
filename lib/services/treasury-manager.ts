@@ -18,16 +18,25 @@ export class TreasuryManager {
     costBasisUsd?: number
     sourceUrl: string
     lastDisclosed: string
+    exchange?: string
   }) {
-    // Validate input
-    const validated = this.dbHelpers.validateInput(
-      { ticker: data.ticker, legalName: data.legalName, sourceUrl: data.sourceUrl },
-      { 
-        ticker: ValidationSchemas.ticker,
-        legalName: ValidationSchemas.entityName,
-        sourceUrl: ValidationSchemas.url
-      }
-    );
+    // Validate input (only validate sourceUrl if it's provided)
+    const validationData: Record<string, unknown> = { 
+      ticker: data.ticker, 
+      legalName: data.legalName 
+    };
+    const validationSchema: Record<string, RegExp> = { 
+      ticker: ValidationSchemas.ticker,
+      legalName: ValidationSchemas.entityName
+    };
+    
+    // Only validate URL if it's provided and not empty
+    if (data.sourceUrl && data.sourceUrl.trim() !== '') {
+      validationData.sourceUrl = data.sourceUrl;
+      validationSchema.sourceUrl = ValidationSchemas.url;
+    }
+    
+    const validated = this.dbHelpers.validateInput(validationData, validationSchema);
     
     if (data.btc < 0) {
       throw new Error('BTC amount cannot be negative');
@@ -52,7 +61,7 @@ export class TreasuryManager {
             .insert({
               legal_name: this.dbHelpers.sanitizeText(validated.legalName as string),
               ticker: validated.ticker as string,
-              listing_venue: this.determineVenue(validated.ticker as string),
+              listing_venue: data.exchange || this.determineVenue(validated.ticker as string),
               hq: 'TBD',
               region: this.determineRegion(validated.ticker as string)
             })
@@ -66,6 +75,22 @@ export class TreasuryManager {
             ticker: validated.ticker,
             entityId 
           });
+        } else {
+          // Update entity name if it has changed
+          const { error: updateError } = await this.supabase
+            .from('entities')
+            .update({
+              legal_name: this.dbHelpers.sanitizeText(validated.legalName as string)
+            })
+            .eq('id', entityId);
+          
+          if (updateError) throw updateError;
+          
+          monitoring.info('treasury-manager', 'Updated entity name', { 
+            ticker: validated.ticker,
+            entityId,
+            newName: validated.legalName
+          });
         }
         
         // Add holding snapshot
@@ -76,7 +101,7 @@ export class TreasuryManager {
             btc: data.btc,
             cost_basis_usd: data.costBasisUsd,
             last_disclosed: data.lastDisclosed,
-            source_url: validated.sourceUrl as string,
+            source_url: validated.sourceUrl as string || data.sourceUrl || '',
             data_source: 'manual'
           });
         
