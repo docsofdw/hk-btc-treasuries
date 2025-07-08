@@ -21,11 +21,12 @@ export function Header({ userMembership }: HeaderProps) {
     setMounted(true)
   }, [])
 
-  const navigation = [
+  const navigation: Array<{name: string; href: string; className?: string}> = [
     { name: "About", href: "/about" },
     { name: "Features", href: "/features" },
     { name: "Pricing", href: "/pricing" },
-    { name: "Contact", href: "/contact" }
+    { name: "Contact", href: "/contact" },
+    { name: "Admin", href: "/admin/dynamic-updates", className: "text-blue-600 font-semibold" }
   ]
 
   return (
@@ -59,7 +60,7 @@ export function Header({ userMembership }: HeaderProps) {
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-foreground hover:text-muted-foreground text-sm leading-6 font-semibold"
+                className={item.className || "text-foreground hover:text-muted-foreground text-sm leading-6 font-semibold"}
               >
                 {item.name}
               </Link>
@@ -140,7 +141,10 @@ export function Header({ userMembership }: HeaderProps) {
                     <Link
                       key={item.name}
                       href={item.href}
-                      className="text-foreground hover:bg-accent hover:text-accent-foreground -mx-3 block rounded-lg px-3 py-2 text-base leading-7 font-semibold"
+                      className={item.className ? 
+                        `${item.className} -mx-3 block rounded-lg px-3 py-2 text-base leading-7` : 
+                        "text-foreground hover:bg-accent hover:text-accent-foreground -mx-3 block rounded-lg px-3 py-2 text-base leading-7 font-semibold"
+                      }
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       {item.name}

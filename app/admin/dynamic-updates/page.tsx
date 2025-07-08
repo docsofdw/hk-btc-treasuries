@@ -133,46 +133,94 @@ export default function DynamicUpdatesPage() {
       const selectedData = Array.from(selectedFindings).map(index => result.findings[index]);
       
       // Process each selected finding
+      const results = [];
       for (const finding of selectedData) {
-        const response = await fetch('/api/admin/manual-treasury-update', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ticker: finding.company.ticker || 'MOON.HK',  // Default ticker if missing
-            legalName: finding.company.name || 'Unknown Company',
-            btc: finding.bitcoin.totalHoldings || 0,
-            costBasisUsd: finding.bitcoin.costBasis,
-            sourceUrl: finding.disclosure.url || '',
-            lastDisclosed: finding.disclosure.date || new Date().toISOString(),
-            exchange: finding.company.exchange || 'UNKNOWN',
-            confidence: finding.metadata.confidence || 50,
-          }),
-        });
+        try {
+          const response = await fetch('/api/admin/manual-treasury-update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ticker: finding.company.ticker || 'UNKNOWN',
+              legalName: finding.company.name || 'Unknown Company',
+              btc: finding.bitcoin.totalHoldings || 0,
+              costBasisUsd: finding.bitcoin.costBasis,
+              sourceUrl: finding.disclosure.url || '',
+              lastDisclosed: finding.disclosure.date || new Date().toISOString(),
+              exchange: finding.company.exchange || 'UNKNOWN',
+              confidence: finding.metadata.confidence || 50,
+            }),
+          });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-          console.error('API Error:', errorData);
-          throw new Error(`Failed to add ${finding.company.name} to database: ${errorData.error || response.statusText}`);
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('API Error:', errorData);
+            results.push({ 
+              company: finding.company.name, 
+              success: false, 
+              error: errorData.error || response.statusText 
+            });
+          } else {
+            const responseData = await response.json();
+            results.push({ 
+              company: finding.company.name, 
+              success: true, 
+              data: responseData 
+            });
+          }
+        } catch (error) {
+          results.push({ 
+            company: finding.company.name, 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error' 
+          });
         }
       }
 
-      // Remove approved findings from display
-      const remainingFindings = result.findings.filter((_, index) => !selectedFindings.has(index));
-      setResult({
-        ...result,
-        findings: remainingFindings,
-        stats: {
-          ...result.stats,
-          uniqueFindings: remainingFindings.length,
-        },
-      });
+      // Show detailed results
+      const successCount = results.filter(r => r.success).length;
+      const failedCount = results.filter(r => !r.success).length;
+      
+      if (successCount > 0) {
+        // Remove successfully approved findings from display
+        const successfulCompanies = results
+          .filter(r => r.success)
+          .map(r => r.company);
+        
+        const remainingFindings = result.findings.filter((finding, index) => {
+          if (!selectedFindings.has(index)) return true;
+          return !successfulCompanies.includes(finding.company.name);
+        });
+        
+        setResult({
+          ...result,
+          findings: remainingFindings,
+          stats: {
+            ...result.stats,
+            uniqueFindings: remainingFindings.length,
+          },
+        });
 
-      setSelectedFindings(new Set());
-      alert(`${selectedData.length} findings approved and added to database`);
+        setSelectedFindings(new Set());
+      }
+      
+      // Show comprehensive feedback
+      let message = `✅ ${successCount} findings approved and added to database`;
+      if (failedCount > 0) {
+        message += `\n❌ ${failedCount} findings failed`;
+        const failures = results.filter(r => !r.success);
+        failures.forEach(f => {
+          message += `\n• ${f.company}: ${f.error}`;
+        });
+      }
+      message += `\n\n🔄 Please refresh your main website to see the updates.`;
+      
+      alert(message);
+      
     } catch (err) {
-      alert(`Error approving findings: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      console.error('Approval error:', err);
+      alert(`❌ Error approving findings: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setProcessingApproval(false);
     }

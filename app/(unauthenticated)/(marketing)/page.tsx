@@ -146,6 +146,13 @@ export default function HomePage() {
                 >
                   About
                 </Link>
+                <Link 
+                  href="/admin/dynamic-updates" 
+                  className="block px-3 py-2 text-base font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  🔧 Admin Dashboard
+                </Link>
                 <div className="px-3 py-2 pt-3 border-t border-gray-100">
                   <ShareButton 
                     targetId="treasury-content"
@@ -183,6 +190,12 @@ export default function HomePage() {
                   className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   About
+                </Link>
+                <Link 
+                  href="/admin/dynamic-updates" 
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg transition-colors border border-blue-200"
+                >
+                  🔧 Admin
                 </Link>
               </nav>
             </div>

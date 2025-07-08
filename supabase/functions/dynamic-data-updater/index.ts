@@ -298,70 +298,126 @@ function parsePerplexityResponse(response: any): any[] {
     // Enhanced pattern matching for Asian companies
     const findings = [];
     
-    // Try to find structured data in the response
-    // Handle cases like "Boyaa Interactive International Limited, listed as 0434.HK..."
-    const companyPattern = /([A-Za-z\s]+(?:Inc\.|Ltd\.|Limited|Corporation|Corp\.|International)*)[,\s]*(?:listed as|ticker|stock code|代码)?[:\s]*([0-9]{3,6}\.?[A-Z]{0,2})/gi;
-    const matches = [...(content.matchAll(companyPattern) || [])];
+    // More precise company pattern - must have proper company suffix and ticker
+    const companyTickerPattern = /\b([A-Z][A-Za-z\s&]*(?:Inc\.?|Ltd\.?|Limited|Corporation|Corp\.?|International|Holdings?|Group|Company|Technologies?))\s*(?:\(([^)]+)\))?\s*(?:listed as|ticker|stock code|trading as|symbol)?[:\s]*([0-9]{3,6}\.?[A-Z]{2,4})/gi;
+    const tickerMatches = [...(content.matchAll(companyTickerPattern) || [])];
     
-    for (const match of matches) {
+    for (const match of tickerMatches) {
       const companyName = match[1].trim();
-      const ticker = match[2].trim();
+      const altName = match[2] ? match[2].trim() : null;
+      const ticker = match[3].trim();
       
-      // Look for BTC amount near this company mention
-      const btcPattern = /(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:BTC|Bitcoin)/i;
-      const btcMatch = content.match(btcPattern);
-      
-      if (btcMatch) {
-        findings.push({
-          companyName: companyName,
-          ticker: ticker,
-          btcAmount: parseFloat(btcMatch[1].replace(/,/g, '')),
-          exchange: detectExchange(ticker)
-        });
-      }
-    }
-    
-    // Fallback to original pattern matching if no companies found
-    if (findings.length === 0) {
-      const patterns = {
-        company: /(?:Company|公司|会社|회사)[:：]\s*([^\n,]+)/gi,
-        ticker: /(?:Ticker|Stock Code|股票代码|銘柄コード)[:：]\s*([A-Z0-9]{1,6}(?:\.[A-Z]{2,4})?)/gi,
-        btc: /(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:BTC|Bitcoin|比特币|ビットコイン)/gi,
-        date: /(?:Date|日期|日付)[:：]\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})/gi,
-        url: /(https?:\/\/[^\s\)]+)/gi
-      };
-      
-      // Extract all matches
-      const companies = [...(content.matchAll(patterns.company) || [])];
-      const tickers = [...(content.matchAll(patterns.ticker) || [])];
-      const btcAmounts = [...(content.matchAll(patterns.btc) || [])];
-      const dates = [...(content.matchAll(patterns.date) || [])];
-      const urls = [...(content.matchAll(patterns.url) || [])];
-      
-      // Combine findings intelligently
-      const maxFindings = Math.max(companies.length, tickers.length, btcAmounts.length);
-      
-      for (let i = 0; i < maxFindings; i++) {
-        const finding: any = {};
+      // Skip if company name looks like a sentence fragment
+      if (isValidCompanyName(companyName)) {
+        // Look for BTC amount in the surrounding context (within 500 chars)
+        const contextStart = Math.max(0, match.index - 250);
+        const contextEnd = Math.min(content.length, match.index + match[0].length + 250);
+        const context = content.substring(contextStart, contextEnd);
         
-        if (companies[i]) finding.companyName = companies[i][1].trim();
-        if (tickers[i]) finding.ticker = tickers[i][1].trim();
-        if (btcAmounts[i]) finding.btcAmount = parseFloat(btcAmounts[i][1].replace(/,/g, ''));
-        if (dates[i]) finding.disclosureDate = dates[i][1];
-        if (urls[i]) finding.url = urls[i][1];
+        const btcPattern = /(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:BTC|Bitcoin)/i;
+        const btcMatch = context.match(btcPattern);
         
-        if (finding.companyName || finding.ticker || finding.btcAmount) {
-          findings.push(normalizeCompanyData(finding));
+        if (btcMatch) {
+          findings.push({
+            companyName: companyName,
+            companyNameLocal: altName,
+            ticker: ticker,
+            btcAmount: parseFloat(btcMatch[1].replace(/,/g, '')),
+            exchange: detectExchange(ticker)
+          });
         }
       }
     }
     
-    return findings;
+    // Look for well-known company names without strict ticker patterns
+    const knownCompanies = [
+      { name: 'Metaplanet', ticker: '3350.T', exchange: 'TSE' },
+      { name: 'Boyaa Interactive', ticker: '0434.HK', exchange: 'HKEX' },
+      { name: 'Meitu', ticker: '1357.HK', exchange: 'HKEX' },
+      { name: 'Moon Inc', ticker: '', exchange: 'HKEX' },
+      { name: 'Victory Securities', ticker: '', exchange: 'HKEX' }
+    ];
+    
+    for (const known of knownCompanies) {
+      const namePattern = new RegExp(`\\b${known.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if (namePattern.test(content)) {
+        const btcPattern = /(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:BTC|Bitcoin)/i;
+        const btcMatch = content.match(btcPattern);
+        
+        if (btcMatch) {
+          findings.push({
+            companyName: known.name,
+            ticker: known.ticker,
+            btcAmount: parseFloat(btcMatch[1].replace(/,/g, '')),
+            exchange: known.exchange
+          });
+        }
+      }
+    }
+    
+    // Remove duplicates and invalid entries
+    const validFindings = findings.filter(finding => {
+      // Must have valid company name
+      if (!finding.companyName || !isValidCompanyName(finding.companyName)) return false;
+      
+      // Must have BTC amount
+      if (!finding.btcAmount || finding.btcAmount <= 0) return false;
+      
+      return true;
+    });
+    
+    // Remove duplicates based on company name
+    const seen = new Set();
+    const uniqueFindings = validFindings.filter(finding => {
+      const key = finding.companyName.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    
+    console.log(`Found ${uniqueFindings.length} valid companies after filtering`);
+    return uniqueFindings.map(normalizeCompanyData);
     
   } catch (error) {
     console.error('Error parsing Perplexity response:', error);
     return [];
   }
+}
+
+// Helper function to validate if a string looks like a company name
+function isValidCompanyName(name: string): boolean {
+  if (!name || name.length < 2) return false;
+  
+  // Skip obvious non-company patterns
+  const invalidPatterns = [
+    /^(a|an|the|in|on|at|to|for|of|with|by)\s/i,  // Articles and prepositions
+    /\d{4}$/,                                       // Ends with year
+    /^(previously|recently|currently|according)/i, // Temporal words
+    /^(bitcoin|btc|cryptocurrency)/i,              // Generic crypto terms
+    /^(company|corporation|holdings?)/i,           // Generic business terms alone
+    /\s(said|announced|reported|disclosed)$/i,     // Verb endings
+    /^(and|or|but|however|therefore)/i,            // Conjunctions
+    /headlines|news|article|report/i,              // News-related terms
+    /^[a-z\s]*$/,                                  // All lowercase (likely sentence fragment)
+    /^\d+\s/,                                      // Starts with number
+  ];
+  
+  for (const pattern of invalidPatterns) {
+    if (pattern.test(name)) return false;
+  }
+  
+  // Must start with capital letter (proper noun)
+  if (!/^[A-Z]/.test(name)) return false;
+  
+  // Should contain at least one word that's capitalized
+  const words = name.split(/\s+/);
+  const hasCapitalizedWord = words.some(word => /^[A-Z][a-z]+/.test(word));
+  if (!hasCapitalizedWord) return false;
+  
+  // Should not be too long (likely a sentence)
+  if (name.length > 80) return false;
+  
+  return true;
 }
 
 // Normalize company data to consistent format
@@ -434,14 +490,20 @@ function normalizeDate(dateStr: string | undefined): string | null {
 
 // Validate finding has minimum required data
 function validateFinding(finding: any): boolean {
-  // Must have either company name or ticker
-  if (!finding.companyName && !finding.ticker) return false;
+  // Must have company name
+  if (!finding.companyName) return false;
+  
+  // Validate company name quality
+  if (!isValidCompanyName(finding.companyName)) return false;
   
   // Must have BTC amount
   if (!finding.btcAmount || finding.btcAmount <= 0) return false;
   
   // BTC amount sanity check (no company likely holds more than 1M BTC)
   if (finding.btcAmount > 1000000) return false;
+  
+  // Reasonable minimum threshold (avoid noise from small amounts)
+  if (finding.btcAmount < 0.01) return false;
   
   return true;
 }
