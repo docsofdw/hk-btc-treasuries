@@ -1,0 +1,24 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Crawl-delay (be nice to servers)
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://asia-bitcoin-treasuries.vercel.app/sitemap.xml
+
+# Disallow admin pages (keep private)
+User-agent: *
+Disallow: /admin/
+Disallow: /admin-dashboard/
+Disallow: /api/admin/
+
+# Disallow internal API routes (accessible but not indexed)
+User-agent: *
+Disallow: /api/
+
+# Disallow authenticated routes
+User-agent: *
+Disallow: /dashboard/
+

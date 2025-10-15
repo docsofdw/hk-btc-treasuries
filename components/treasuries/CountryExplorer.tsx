@@ -136,7 +136,7 @@ const CompanyCard = ({ entity, rank, btcPrice }: { entity: TreasuryEntity; rank?
      entity.hq?.toLowerCase().includes('shenzhen'));
 
   return (
-    <div className="group relative bg-white/40 backdrop-blur-sm border border-white/30 rounded-xl p-4 hover:bg-white/60 hover:border-white/50 transition-all duration-300 hover:shadow-lg hover:shadow-black/10">
+    <div className="group relative bg-white/40 backdrop-blur-sm border border-white/30 rounded-xl p-4 hover:bg-white/60 hover:border-white/50 transition-all duration-300">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-start gap-3 flex-1">
           {rank && (
@@ -170,7 +170,7 @@ const CompanyCard = ({ entity, rank, btcPrice }: { entity: TreasuryEntity; rank?
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-1">
-                        <Badge variant="outline" className="text-xs font-semibold bg-orange-50 text-orange-700 border-orange-300 px-1 py-0">
+                        <Badge className="text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-300 px-1 py-0">
                           ADR
                         </Badge>
                         <Info className="h-3 w-3 text-gray-400 hover:text-gray-600 cursor-help" />
@@ -190,8 +190,7 @@ const CompanyCard = ({ entity, rank, btcPrice }: { entity: TreasuryEntity; rank?
                 {entity.ticker}
               </span>
               <Badge 
-                variant="outline" 
-                className={`text-xs ${
+                className={`text-xs border ${
                   entity.listingVenue === 'HKEX' ? 'bg-red-50/50 text-red-700 border-red-200' :
                   entity.listingVenue === 'NASDAQ' ? 'bg-blue-50/50 text-blue-700 border-blue-200' :
                   'bg-purple-50/50 text-purple-700 border-purple-200'
@@ -298,9 +297,9 @@ export default function CountryExplorer({ countryData, btcPrice }: CountryExplor
                 {/* Country Card */}
                                    <button
                    onClick={() => toggleCountry(country.key)}
-                   className={`w-full p-6 rounded-2xl border backdrop-blur-sm transition-all duration-500 hover:scale-[1.02] hover:shadow-xl hover:shadow-black/10 ${
+                   className={`w-full p-6 rounded-xl border backdrop-blur-sm transition-all duration-500 hover:scale-[1.01] ${
                      isExpanded 
-                       ? `bg-gradient-to-br ${country.gradient} border-white/50 shadow-lg` 
+                       ? `bg-gradient-to-br ${country.gradient} border-white/50` 
                        : stats.total === 0
                        ? 'bg-gray-50/40 border-gray-200/50 hover:bg-gray-100/60 hover:border-gray-300/50'
                        : 'bg-white/40 border-white/30 hover:bg-white/60 hover:border-white/50'
@@ -341,7 +340,7 @@ export default function CountryExplorer({ countryData, btcPrice }: CountryExplor
 
                 {/* Expanded Country Leaderboard */}
                 {isExpanded && (
-                  <div className="mt-4 bg-white/60 backdrop-blur-md rounded-2xl border border-white/50 p-6 shadow-xl animate-in slide-in-from-top-2 duration-300">
+                  <div className="mt-4 bg-white/60 backdrop-blur-md rounded-xl border border-white/50 p-6 animate-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center gap-3 mb-6">
                       <span className="text-2xl">{country.flag}</span>
                       <div>

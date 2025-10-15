@@ -19,6 +19,7 @@ export interface TreasuryEntity {
   listingVenue: 'HKEX' | 'NASDAQ' | 'NYSE' | 'SZSE' | 'SSE' | 'SGX' | 'KRX' | 'SET' | 'TSE';
   hq: string;
   btc: number;
+  deltaBtc?: number | null; // Change since previous snapshot
   costBasisUsd: number;
   lastDisclosed: string;
   source: string;
@@ -34,6 +35,9 @@ export interface TreasuryEntity {
   stageUpdatedAt?: string;
   estimatedBtc?: number; // For prospects without confirmed holdings
   confidenceLevel?: 'low' | 'medium' | 'high';
+  // Manager and company classification
+  managerProfile?: 'ACTIVE_MANAGER' | 'PASSIVE_HOLDER' | null;
+  companyType?: 'INTERNET' | 'GAMING' | 'MINER' | 'TECH' | 'INVESTMENT' | 'OTHER' | null;
 }
 
 export interface ExportRow {

@@ -17,6 +17,8 @@ interface Entity {
   listing_venue: string;
   last_disclosed: string;
   ticker?: string;
+  manager_profile?: 'ACTIVE_MANAGER' | 'PASSIVE_HOLDER' | null;
+  company_type?: 'INTERNET' | 'GAMING' | 'MINER' | 'TECH' | 'INVESTMENT' | 'OTHER' | null;
 }
 
 interface MonitorStats {

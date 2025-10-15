@@ -1,16 +1,28 @@
 # 🚀 Quick Start: Admin Dashboard
 
+## 🔒 Authentication Required
+
+All admin routes are now protected with HTTP Basic Authentication for security.
+
+### Admin Credentials
+- **Username**: `admin`
+- **Password**: `vqdLLs1534lq5k`
+
+**Important**: Keep these credentials secure! You'll be prompted to enter them when accessing any `/admin` route.
+
+---
+
 ## Easy Access to Your Admin Panel
 
-Your admin dashboard is now easily accessible without any authentication:
-
 ### 1. **Direct Access**
-- **URL**: `http://localhost:3000/admin-dashboard` (for development)
+- **Local Development**: `http://localhost:3000/admin-dashboard`
 - **Production**: `https://your-domain.com/admin-dashboard`
+- Your browser will prompt for username/password on first access
 
 ### 2. **Navigation Links**
 - Purple **🔧 Admin** button in the main site navigation
 - Available on both mobile and desktop
+- Requires authentication on first click
 
 ## ⚡ Quick Operations
 
@@ -101,10 +113,34 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ## 🎉 You're Ready!
 
 Your admin panel is now:
-- ✅ **Accessible** without authentication
+- ✅ **Secure** with HTTP Basic Authentication
 - ✅ **Simple** one-click operations  
 - ✅ **Automated** with optional 6-hour scanning
 - ✅ **Streamlined** with confidence scoring
 - ✅ **Monitoring** with real-time stats
 
 Navigate to the admin dashboard and start discovering Bitcoin treasuries!
+
+---
+
+## 🔐 Security Notes
+
+### Environment Variable Setup
+The authentication is configured via the `ADMIN_BASIC_AUTH` environment variable:
+
+**Local Development** (`.env.local`):
+```bash
+ADMIN_BASIC_AUTH="Basic YWRtaW46dnFkTExzMTUzNGxxNWs="
+```
+
+**Production** (Vercel/Deployment):
+- Go to your hosting dashboard → Environment Variables
+- Add `ADMIN_BASIC_AUTH` with value: `Basic YWRtaW46dnFkTExzMTUzNGxxNWs=`
+- Deploy to all environments (Production, Preview, Development)
+
+### Changing the Password
+To change the admin password:
+1. Generate new base64 string: `echo -n 'admin:NEW_PASSWORD' | base64`
+2. Update `ADMIN_BASIC_AUTH` in `.env.local`: `Basic <new-base64-string>`
+3. Update environment variables in production
+4. Restart your server

@@ -25,12 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update entity' }, { status: 500 });
     }
     
-    // Refresh the materialized view
-    const { error: refreshError } = await supabase.rpc('refresh_latest_snapshot');
-    
-    if (refreshError) {
-      console.warn('Failed to refresh materialized view:', refreshError);
-    }
+    // ✅ No manual refresh needed! Triggers automatically update latest_snapshot
     
     return NextResponse.json({
       success: true,

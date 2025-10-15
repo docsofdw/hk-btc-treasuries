@@ -1,7 +1,6 @@
 import { config } from "dotenv"
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
-import { customers } from "./schema/customers"
 
 config({ path: ".env.local" })
 
@@ -12,7 +11,7 @@ if (!databaseUrl) {
 
 const dbSchema = {
   // tables
-  customers
+  // Customer/user tables removed - using Basic Auth for admin routes only
   // relations
 }
 

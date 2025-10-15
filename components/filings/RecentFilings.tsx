@@ -89,9 +89,9 @@ const filingTypeStyles = {
 export default function RecentFilings() {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   
-  // Fetch from the new endpoint
+  // Fetch from the consolidated endpoint with query parameters
   const { data, error, isLoading } = useSWR<FilingsResponse>(
-    '/api/filings/recent/hkex',
+    '/api/filings/recent?source=raw&exchange=HKEX&limit=20',
     fetcher,
     { refreshInterval: 15 * 60 * 1000 } // 15 minutes
   );
@@ -186,7 +186,7 @@ export default function RecentFilings() {
             return (
               <div 
                 key={filing.id}
-                className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 hover:border-gray-300 transition-colors"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 sm:gap-4 flex-1">

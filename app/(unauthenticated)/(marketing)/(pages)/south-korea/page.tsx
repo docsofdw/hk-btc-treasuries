@@ -6,14 +6,61 @@ import { RegionalPage } from '@/components/regions/RegionalPage';
 import { getRegion } from '@/types/regions';
 import { TreasuryEntity } from '@/types/treasury';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+interface HoldingResponse {
+  id: string;
+  company: string;
+  ticker: string;
+  exchange: string;
+  headquarters: string;
+  btcHoldings: number;
+  costBasisUsd?: number;
+  lastDisclosed: string;
+  source: string;
+  verified: boolean;
+  marketCap?: number;
+  sharesOutstanding?: number;
+  region?: string;
+  managerProfile?: string;
+  companyType?: string;
+}
+
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  
+  // Transform /api/v1/holdings response to match expected format
+  if (json.success && json.data?.holdings) {
+    return {
+      entities: json.data.holdings.map((h: HoldingResponse) => ({
+        id: h.id,
+        legalName: h.company,
+        ticker: h.ticker,
+        listingVenue: h.exchange,
+        hq: h.headquarters,
+        btc: h.btcHoldings,
+        costBasisUsd: h.costBasisUsd,
+        lastDisclosed: h.lastDisclosed,
+        source: h.source,
+        verified: h.verified,
+        marketCap: h.marketCap,
+        sharesOutstanding: h.sharesOutstanding,
+        dataSource: 'manual',
+        region: h.region,
+        managerProfile: h.managerProfile,
+        companyType: h.companyType,
+      }))
+    };
+  }
+  
+  return json;
+};
 
 export default function SouthKoreaPage() {
   const [btcPrice, setBtcPrice] = useState(107038);
   const region = getRegion('south-korea');
   
   const { data, error, isLoading } = useSWR<{ entities: TreasuryEntity[] }>(
-    '/api/fetch-treasuries?region=south-korea',
+    '/api/v1/holdings',
     fetcher,
     {
       refreshInterval: 300000, // 5 minutes

@@ -35,7 +35,7 @@ export default function HoldingsChart({ data }: HoldingsChartProps) {
   const maxBtc = Math.max(...chartData.map(d => d.btc));
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
       <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Top 10 Bitcoin Holdings</h3>
       
       <div className="space-y-2.5 sm:space-y-3">

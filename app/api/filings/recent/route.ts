@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { publicApiLimiter, getClientIp, addRateLimitHeaders, rateLimit } from '@/lib/rate-limit';
 
 interface Filing {
   id: string;
@@ -33,17 +34,36 @@ interface RawFilingData {
   extracted_text: string | null;
   entities: {
     legal_name: string;
-    ticker: string;
     listing_venue: string;
   } | {
     legal_name: string;
-    ticker: string;
     listing_venue: string;
   }[];
 }
 
 export async function GET(request: NextRequest) {
   try {
+    // Apply rate limiting
+    const ip = getClientIp(request);
+    const rateLimitResult = await rateLimit(ip, publicApiLimiter, 60, 60 * 1000);
+    
+    if (!rateLimitResult.success) {
+      const headers = new Headers();
+      addRateLimitHeaders(headers, rateLimitResult);
+      headers.set('Retry-After', Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString());
+      
+      return NextResponse.json(
+        { 
+          error: 'Too many requests',
+          retryAfter: Math.ceil((rateLimitResult.reset - Date.now()) / 1000),
+        },
+        { 
+          status: 429,
+          headers: Object.fromEntries(headers.entries())
+        }
+      );
+    }
+    
     const { searchParams } = new URL(request.url);
     const source = searchParams.get('source'); // 'raw' to use raw_filings table
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -71,7 +91,6 @@ export async function GET(request: NextRequest) {
           extracted_text,
           entities!inner(
             legal_name,
-            ticker,
             listing_venue
           )
         `)
@@ -101,7 +120,7 @@ export async function GET(request: NextRequest) {
         return {
         id: filing.id.toString(),
         company: entity.legal_name,
-        ticker: entity.ticker,
+        ticker: '', // Ticker not available in entities table
         type: (filing.filing_type as Filing['type']) || 'disclosure',
         btcAmount: parseFloat(filing.btc?.toString() || '0'),
         totalHoldings: parseFloat(filing.total_holdings?.toString() || filing.btc?.toString() || '0'),
@@ -159,11 +178,10 @@ export async function POST(request: NextRequest) {
         verified,
         summary,
         extracted_text,
-        entities!inner(
-          legal_name,
-          ticker,
-          listing_venue
-        )
+          entities!inner(
+            legal_name,
+            listing_venue
+          )
       `)
       .order('disclosed_at', { ascending: false });
     
@@ -180,9 +198,10 @@ export async function POST(request: NextRequest) {
       query = query.in('filing_type', Array.isArray(filters.filing_type) ? filters.filing_type : [filters.filing_type]);
     }
     
-    if (filters.ticker) {
-      query = query.eq('entities.ticker', filters.ticker);
-    }
+    // Ticker filter removed - ticker column doesn't exist in entities table
+    // if (filters.ticker) {
+    //   query = query.eq('entities.ticker', filters.ticker);
+    // }
     
     if (filters.date_from) {
       query = query.gte('disclosed_at', filters.date_from);
@@ -203,7 +222,7 @@ export async function POST(request: NextRequest) {
       return {
       id: filing.id.toString(),
       company: entity.legal_name,
-      ticker: entity.ticker,
+      ticker: '', // Ticker not available in entities table
       type: (filing.filing_type as Filing['type']) || 'disclosure',
       btcAmount: parseFloat(filing.btc?.toString() || '0'),
       totalHoldings: parseFloat(filing.total_holdings?.toString() || filing.btc?.toString() || '0'),

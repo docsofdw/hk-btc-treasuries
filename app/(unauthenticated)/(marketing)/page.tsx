@@ -4,19 +4,68 @@ import { useEffect, useState, useMemo } from 'react';
 import useSWR from 'swr';
 import numeral from 'numeral';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, AlertTriangle } from 'lucide-react';
 import EnhancedTreasuryTable from '@/components/treasuries/EnhancedTreasuryTable';
 import HoldingsChart from '@/components/treasuries/HoldingsChart';
 import RecentFilings from '@/components/filings/RecentFilings';
 import { ShareButton } from '@/components/ui/share-button';
 import { DeltaIndicator } from '@/components/ui/delta-indicator';
-import { ContextPanel } from '@/components/ui/context-panel';
 import { SparklineChart, generateSampleSparklineData } from '@/components/ui/sparkline-chart';
 import { RegionSelector } from '@/components/regions/RegionSelector';
 import { RegionsOverview } from '@/components/regions/RegionsOverview';
 import { TreasuryEntity } from '@/types/treasury';
+import { StructuredData } from '@/components/seo/StructuredData';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+interface HoldingResponse {
+  id: string;
+  company: string;
+  ticker: string;
+  exchange: string;
+  headquarters: string;
+  btcHoldings: number;
+  deltaBtc?: number | null;
+  costBasisUsd?: number;
+  lastDisclosed: string;
+  source: string;
+  verified: boolean;
+  marketCap?: number;
+  sharesOutstanding?: number;
+  region?: string;
+  managerProfile?: string;
+  companyType?: string;
+}
+
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  
+  // Transform /api/v1/holdings response to match expected format
+  if (json.success && json.data?.holdings) {
+    return {
+      entities: json.data.holdings.map((h: HoldingResponse) => ({
+        id: h.id,
+        legalName: h.company,
+        ticker: h.ticker,
+        listingVenue: h.exchange,
+        hq: h.headquarters,
+        btc: h.btcHoldings,
+        deltaBtc: h.deltaBtc ?? null, // NEW: Delta since last snapshot
+        costBasisUsd: h.costBasisUsd,
+        lastDisclosed: h.lastDisclosed,
+        source: h.source,
+        verified: h.verified,
+        marketCap: h.marketCap,
+        sharesOutstanding: h.sharesOutstanding,
+        dataSource: 'manual',
+        region: h.region,
+        managerProfile: h.managerProfile,
+        companyType: h.companyType,
+      }))
+    };
+  }
+  
+  return json;
+};
 
 export default function HomePage() {
   const [btcPrice, setBtcPrice] = useState(107038);
@@ -24,7 +73,7 @@ export default function HomePage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const { data, error, isLoading, mutate } = useSWR<{ entities: TreasuryEntity[] }>(
-    '/api/fetch-treasuries',
+    '/api/v1/holdings?region=HK',
     fetcher,
     {
       refreshInterval: 300000, // 5 minutes
@@ -51,6 +100,16 @@ export default function HomePage() {
       lastUpdated: lastUpdated.toISOString(),
     };
   }, [data?.entities, btcPrice]);
+
+  // Check if any entity has stale data (> 90 days old)
+  const hasStaleData = useMemo(() => {
+    if (!data?.entities) return false;
+    return data.entities.some(entity => {
+      if (!entity.lastDisclosed) return false;
+      const daysSinceDisclosure = (Date.now() - new Date(entity.lastDisclosed).getTime()) / (1000 * 60 * 60 * 24);
+      return daysSinceDisclosure > 90;
+    });
+  }, [data?.entities]);
 
   // Store previous total for delta calculation (simulate historical data for now)
   useEffect(() => {
@@ -83,7 +142,9 @@ export default function HomePage() {
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <>
+      <StructuredData type="website" />
+      <main className="min-h-screen bg-gray-50">
       {/* Mobile-Optimized Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -129,13 +190,14 @@ export default function HomePage() {
                 >
                   Holdings
                 </Link>
-                <Link 
+                {/* Pipeline hidden until it delivers value */}
+                {/* <Link 
                   href="/pipeline" 
                   className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Pipeline
-                </Link>
+                </Link> */}
                 <div className="px-3 py-2">
                   <RegionSelector compact />
                 </div>
@@ -147,12 +209,20 @@ export default function HomePage() {
                   About
                 </Link>
                 <Link 
+                  href="/methodology" 
+                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Methodology
+                </Link>
+                {/* Admin hidden from public, access via /admin URL directly */}
+                {/* <Link 
                   href="/admin/dynamic-updates" 
                   className="block px-3 py-2 text-base font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   🔧 Admin Dashboard
-                </Link>
+                </Link> */}
                 <div className="px-3 py-2 pt-3 border-t border-gray-100">
                   <ShareButton 
                     targetId="treasury-content"
@@ -178,12 +248,13 @@ export default function HomePage() {
                 >
                   Holdings
                 </Link>
-                <Link 
+                {/* Pipeline hidden until it delivers value */}
+                {/* <Link 
                   href="/pipeline" 
                   className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   Pipeline
-                </Link>
+                </Link> */}
                 <RegionSelector compact />
                 <Link 
                   href="/about" 
@@ -192,11 +263,18 @@ export default function HomePage() {
                   About
                 </Link>
                 <Link 
+                  href="/methodology" 
+                  className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  Methodology
+                </Link>
+                {/* Admin hidden from public, access via /admin URL directly */}
+                {/* <Link 
                   href="/admin/dynamic-updates" 
                   className="text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg transition-colors border border-blue-200"
                 >
                   🔧 Admin
-                </Link>
+                </Link> */}
               </nav>
             </div>
             
@@ -224,10 +302,10 @@ export default function HomePage() {
         <div className="mb-6 sm:mb-8 lg:mb-10">
           <div className="text-center sm:text-left mb-4 sm:mb-6">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-2 sm:mb-3 lg:mb-4 leading-tight">
-              Asia's Bitcoin Treasury Companies
+              Hong Kong's Bitcoin Treasuries
             </h2>
             <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-gray-600 max-w-3xl mx-auto sm:mx-0 leading-relaxed">
-              Tracking publicly disclosed Bitcoin holdings by Hong Kong-listed and China-headquartered companies
+              Tracking corporate Bitcoin holdings from exchange filings. Source-linked. Updated daily.
             </p>
           </div>
 
@@ -236,11 +314,11 @@ export default function HomePage() {
             <div className="space-y-4 sm:space-y-6">
               {/* Mobile: Stack vertically, Desktop: Grid layout */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-                {/* Total Holdings with Delta - Full width on mobile */}
-                <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6">
+                {/* Total Holdings - Full width */}
+                <div className="lg:col-span-3 bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4">
                     <div className="mb-3 sm:mb-0">
-                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Total Bitcoin Holdings</h3>
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Hong Kong Corporate Bitcoin Holdings</h3>
                       <DeltaIndicator
                         current={treasuryStats.totalBtc}
                         previous={previousTotalBtc}
@@ -281,15 +359,6 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Context Panel - Full width on mobile */}
-                <div className="lg:col-span-1">
-                  <ContextPanel
-                    asiaTotalBtc={treasuryStats.totalBtc}
-                    asiaCompanyCount={treasuryStats.companyCount}
-                    className="h-full"
-                  />
-                </div>
               </div>
             </div>
           )}
@@ -297,7 +366,7 @@ export default function HomePage() {
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 sm:px-6 py-4 rounded-2xl mb-4 sm:mb-6 text-center">
+          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 sm:px-6 py-4 rounded-r-lg mb-4 sm:mb-6">
             <p className="font-semibold text-sm sm:text-base lg:text-lg mb-1">Error loading data</p>
             <p className="text-xs sm:text-sm lg:text-base">Please refresh the page to try again.</p>
           </div>
@@ -309,6 +378,22 @@ export default function HomePage() {
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-4 border-orange-200 border-t-orange-600 mx-auto"></div>
               <p className="mt-4 sm:mt-6 text-base sm:text-lg lg:text-xl text-gray-700 font-medium">Loading treasury data...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Stale Data Warning Banner */}
+        {hasStaleData && data?.entities && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg mb-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-yellow-400" aria-hidden="true" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-yellow-800">
+                  Some holdings are older than 90 days. Companies with stale data are marked below.
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -363,5 +448,6 @@ export default function HomePage() {
         </footer>
       </div>
     </main>
+    </>
   );
 }

@@ -232,8 +232,8 @@ export class MonitoringService {
   async performHealthChecks(supabase: SupabaseClient): Promise<HealthCheckResult[]> {
     const checks = [
       this.checkDatabaseHealth(supabase),
-      this.checkApiHealth('coindesk', 'https://api.coindesk.com/v1/bpi/currentprice.json'),
-      this.checkApiHealth('coingecko', 'https://api.coingecko.com/api/v3/ping')
+      this.checkApiHealth('coingecko', 'https://api.coingecko.com/api/v3/ping'),
+      this.checkApiHealth('coincap', 'https://api.coincap.io/v2/assets/bitcoin')
     ];
 
     return Promise.all(checks);

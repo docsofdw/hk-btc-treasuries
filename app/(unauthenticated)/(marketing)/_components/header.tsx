@@ -1,18 +1,12 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { SelectCustomer } from "@/db/schema/customers"
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
-import { Menu, Moon, Sun, X, Sparkles } from "lucide-react"
+import { Menu, Moon, Sun, X } from "lucide-react"
 import { useTheme } from "next-themes"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
-interface HeaderProps {
-  userMembership: SelectCustomer["membership"] | null
-}
-
-export function Header({ userMembership }: HeaderProps) {
+export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
@@ -79,29 +73,6 @@ export function Header({ userMembership }: HeaderProps) {
                 <Moon className="h-5 w-5" />
               )}
             </Button>
-            <SignedOut>
-              <Button variant="ghost" asChild>
-                <Link href="/login">Log in</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/signup">Sign up</Link>
-              </Button>
-            </SignedOut>
-            <SignedIn>
-              {userMembership === "pro" ? (
-                <Button asChild>
-                  <Link href="/dashboard">Dashboard</Link>
-                </Button>
-              ) : (
-                <Button asChild className="gap-2">
-                  <Link href="/#pricing">
-                    <Sparkles className="h-4 w-4" />
-                    Upgrade
-                  </Link>
-                </Button>
-              )}
-              <UserButton />
-            </SignedIn>
           </div>
         </nav>
       </header>
@@ -167,49 +138,6 @@ export function Header({ userMembership }: HeaderProps) {
                     )}
                     {theme === "dark" ? "Light Mode" : "Dark Mode"}
                   </Button>
-                  <SignedOut>
-                    <Button variant="outline" className="w-full" asChild>
-                      <Link
-                        href="/login"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        Log in
-                      </Link>
-                    </Button>
-                    <Button className="w-full" asChild>
-                      <Link
-                        href="/signup"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        Sign up
-                      </Link>
-                    </Button>
-                  </SignedOut>
-                  <SignedIn>
-                    {userMembership === "pro" ? (
-                      <Button className="w-full" asChild>
-                        <Link
-                          href="/dashboard"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Dashboard
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button className="w-full gap-2" asChild>
-                        <Link
-                          href="/#pricing"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          <Sparkles className="h-4 w-4" />
-                          Upgrade
-                        </Link>
-                      </Button>
-                    )}
-                    <div className="flex justify-center pt-4">
-                      <UserButton />
-                    </div>
-                  </SignedIn>
                 </div>
               </div>
             </div>
