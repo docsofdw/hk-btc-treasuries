@@ -41,6 +41,14 @@ export function getOfficialExchangeUrl(ticker: string, listingVenue: string): st
  * Generate HKEX announcements page URL for Hong Kong listed companies
  * Uses stockId mapping for known companies, provides search page with guidance for others
  */
+export function getHKEXCompanyPageUrl(ticker: string): string {
+  // Remove .HK suffix and leading zeros for HKEX company page
+  const stockCode = ticker.replace('.HK', '').replace(/^0+/, '');
+  
+  // HKEX company page format
+  return `https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${stockCode}&sc_lang=en`;
+}
+
 export function getHKEXAnnouncementsUrl(ticker: string): string {
   // Remove .HK suffix for HKEX search
   let stockCode = ticker.replace('.HK', '');

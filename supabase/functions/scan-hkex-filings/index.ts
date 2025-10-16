@@ -27,12 +27,18 @@ interface ParsedFiling {
   text: string;
 }
 
-// Keywords to search for Bitcoin-related filings in multiple languages
-const BITCOIN_KEYWORDS = [
-  'bitcoin', 'btc', 'digital asset', 'cryptocurrency', 'crypto asset',
-  'virtual currency', 'digital currency', 'blockchain asset',
-  '比特币', '數字資產', '加密货币', '虛擬資產', '數位資產', '數碼資產'
-];
+// Bitcoin keywords regex for detection (case-insensitive)
+// Used to flag Bitcoin-related announcements
+const BITCOIN_KEYWORDS_REGEX = /(bitcoin|btc|cryptocurrency|crypto[\s-]?asset|digital[\s-]?asset|virtual[\s-]?asset|virtual[\s-]?currency|digital[\s-]?currency|blockchain[\s-]?asset|比特币|數字資產|加密货币|加密貨幣|虛擬資產|數位資產|數碼資產|加密資產)/i;
+
+// Helper function to check if content is Bitcoin-related
+function isBitcoinRelated(title: string, summary?: string, extractedText?: string): boolean {
+  return (
+    BITCOIN_KEYWORDS_REGEX.test(title) ||
+    (summary && BITCOIN_KEYWORDS_REGEX.test(summary)) ||
+    (extractedText && BITCOIN_KEYWORDS_REGEX.test(extractedText))
+  );
+}
 
 async function searchHKEXFilings(ticker: string, fromDate: string, searchAllFilings = false): Promise<Filing[]> {
   const stockCode = ticker.replace('.HK', '');
@@ -67,6 +73,7 @@ async function searchHKEXFilings(ticker: string, fromDate: string, searchAllFili
     const filings: Filing[] = [];
     
     // Parse HKEX search results
+    // NEW: Fetch ALL announcements (no early filtering)
     $('.news-item, tr').each((i, el) => {
       const $el = $(el);
       const titleElement = $el.find('.news-title, a[href*=".pdf"]').first();
@@ -74,26 +81,16 @@ async function searchHKEXFilings(ticker: string, fromDate: string, searchAllFili
       
       if (!title) return;
       
-      // For known entities, include all filings OR Bitcoin-related ones
-      // For unknown entities, only Bitcoin-related filings
-      const containsBitcoin = BITCOIN_KEYWORDS.some(keyword => 
-        title.toLowerCase().includes(keyword.toLowerCase())
-      );
+      const dateText = $el.find('.news-date, td').eq(0).text().trim();
+      const pdfLink = $el.find('a[href*=".pdf"]').attr('href') || titleElement.attr('href');
       
-      const shouldInclude = searchAllFilings || containsBitcoin;
-      
-      if (shouldInclude) {
-        const dateText = $el.find('.news-date, td').eq(0).text().trim();
-        const pdfLink = $el.find('a[href*=".pdf"]').attr('href') || titleElement.attr('href');
-        
-        if (pdfLink) {
-          filings.push({
-            title,
-            date: parseHKEXDate(dateText) || new Date().toISOString(),
-            url: pdfLink.startsWith('http') ? pdfLink : `https://www1.hkexnews.hk${pdfLink}`,
-            type: determineFilingType(title)
-          });
-        }
+      if (pdfLink) {
+        filings.push({
+          title,
+          date: parseHKEXDate(dateText) || new Date().toISOString(),
+          url: pdfLink.startsWith('http') ? pdfLink : `https://www1.hkexnews.hk${pdfLink}`,
+          type: determineFilingType(title)
+        });
       }
     });
     
@@ -206,15 +203,47 @@ function parseHKEXDate(dateStr: string): string | null {
   return null;
 }
 
+// Enhanced filing type determination
 function determineFilingType(title: string): string {
   const lowerTitle = title.toLowerCase();
-  if (lowerTitle.includes('acquisition') || lowerTitle.includes('purchase') || lowerTitle.includes('acquired')) {
+  
+  // Check for acquisition/purchase keywords (English and Chinese)
+  if (
+    lowerTitle.includes('acquisition') || 
+    lowerTitle.includes('purchase') || 
+    lowerTitle.includes('acquired') ||
+    lowerTitle.includes('买入') ||
+    lowerTitle.includes('買入') ||
+    lowerTitle.includes('收购') ||
+    lowerTitle.includes('收購')
+  ) {
     return 'acquisition';
-  } else if (lowerTitle.includes('disposal') || lowerTitle.includes('sale') || lowerTitle.includes('sold')) {
+  }
+  
+  // Check for disposal/sale keywords (English and Chinese)
+  if (
+    lowerTitle.includes('disposal') || 
+    lowerTitle.includes('sale') || 
+    lowerTitle.includes('sold') ||
+    lowerTitle.includes('卖出') ||
+    lowerTitle.includes('賣出') ||
+    lowerTitle.includes('出售')
+  ) {
     return 'disposal';
-  } else if (lowerTitle.includes('update') || lowerTitle.includes('revised')) {
+  }
+  
+  // Check for update/revision keywords (English and Chinese)
+  if (
+    lowerTitle.includes('update') || 
+    lowerTitle.includes('revised') ||
+    lowerTitle.includes('更新') ||
+    lowerTitle.includes('修订') ||
+    lowerTitle.includes('修訂')
+  ) {
     return 'update';
   }
+  
+  // Default to disclosure
   return 'disclosure';
 }
 
@@ -317,9 +346,10 @@ serve(async (req) => {
     let totalScanned = 0;
     let totalFound = 0;
     
-    // Phase 1: Scan ALL filings for known entities
+    // Phase 1: Scan ALL announcements for known entities and flag Bitcoin-related ones
+    // This captures every company announcement, not just Bitcoin-related filings
     for (const entity of entities || []) {
-      console.log(`Scanning ALL filings for ${entity.ticker} (${entity.legal_name})`);
+      console.log(`Scanning ALL announcements for ${entity.ticker} (${entity.legal_name})`);
       totalScanned++;
       
       try {
@@ -345,7 +375,10 @@ serve(async (req) => {
             // Extract Bitcoin amounts from title and content
             const parsed = await extractBTCAmount(filing.title);
             
-            // Store all filings from known entities
+            // Check if this filing is Bitcoin-related
+            const bitcoinRelated = isBitcoinRelated(filing.title, undefined, parsed.text);
+            
+            // Store ALL filings from known entities with bitcoin_related flag
             const { error } = await supabase
               .from('raw_filings')
               .upsert({
@@ -358,7 +391,8 @@ serve(async (req) => {
                 filing_type: filing.type,
                 extracted_text: parsed.text,
                 verified: false,
-                total_holdings: parsed.btc || null
+                total_holdings: parsed.btc || null,
+                bitcoin_related: bitcoinRelated  // NEW: Flag Bitcoin-related announcements
               }, {
                 onConflict: 'entity_id,pdf_url'
               });
@@ -371,7 +405,8 @@ serve(async (req) => {
                 btc: parsed.btc,
                 type: filing.type,
                 date: filing.date,
-                source: 'known_entity'
+                source: 'known_entity',
+                bitcoin_related: bitcoinRelated
               });
             } else {
               console.error(`Error storing filing for ${entity.ticker}:`, error);
@@ -424,7 +459,10 @@ serve(async (req) => {
                 .single();
               
               if (!entityError && newEntity) {
-                // Store the filing
+                // Check if Bitcoin-related
+                const bitcoinRelated = isBitcoinRelated(filing.title, undefined, parsed.text);
+                
+                // Store the filing with bitcoin_related flag
                 const { error } = await supabase
                   .from('raw_filings')
                   .upsert({
@@ -437,7 +475,8 @@ serve(async (req) => {
                     filing_type: filing.type,
                     extracted_text: parsed.text,
                     verified: false,
-                    total_holdings: parsed.btc
+                    total_holdings: parsed.btc,
+                    bitcoin_related: bitcoinRelated  // NEW: Flag Bitcoin-related announcements
                   }, {
                     onConflict: 'entity_id,pdf_url'
                   });
@@ -450,7 +489,8 @@ serve(async (req) => {
                     btc: parsed.btc,
                     type: filing.type,
                     date: filing.date,
-                    source: 'broad_search_new_entity'
+                    source: 'broad_search_new_entity',
+                    bitcoin_related: bitcoinRelated
                   });
                 }
               }

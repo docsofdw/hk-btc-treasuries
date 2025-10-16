@@ -18,18 +18,23 @@ import {
 
 dayjs.extend(relativeTime);
 
-// Simplified Filing interface
+// Simplified Filing interface - matches API response format
 interface Filing {
   id: string;
   company: string;
   ticker: string;
-  filing_type: 'acquisition' | 'disposal' | 'update' | 'disclosure';
-  btc_amount: number | null;
-  total_holdings: number | null;
-  pdf_url: string;
+  type: 'acquisition' | 'disposal' | 'update' | 'disclosure';
+  btcAmount: number;
+  totalHoldings: number;
+  source: string; // This is the pdf_url
   date: string;
   verified: boolean;
+  exchange: string;
+  documentType?: string;
   title?: string;
+  summary?: string;
+  listingVenue: string;
+  bitcoinRelated: boolean; // NEW: Flag for Bitcoin-related filings
 }
 
 interface FilingsResponse {
@@ -40,7 +45,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 // Pure function for filing icon
 function filingIcon(filing: Filing) {
-  switch (filing.filing_type) {
+  switch (filing.type) {
     case 'acquisition':
       return <ArrowUpIcon className="w-5 h-5" />;
     case 'disposal':
@@ -54,7 +59,7 @@ function filingIcon(filing: Filing) {
 
 // Pure function for filing label
 function filingLabel(filing: Filing): string {
-  switch (filing.filing_type) {
+  switch (filing.type) {
     case 'acquisition':
       return 'Acquired';
     case 'disposal':
@@ -88,21 +93,26 @@ const filingTypeStyles = {
 
 export default function RecentFilings() {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [filter, setFilter] = useState<'bitcoin' | 'all'>('bitcoin'); // NEW: Filter state (default to Bitcoin)
   
   // Fetch from the consolidated endpoint with query parameters
+  // Include bitcoin_related parameter based on filter
   const { data, error, isLoading } = useSWR<FilingsResponse>(
-    '/api/filings/recent?source=raw&exchange=HKEX&limit=20',
+    `/api/filings/recent?source=raw&exchange=HKEX&limit=20${filter === 'bitcoin' ? '&bitcoin_related=true' : ''}`,
     fetcher,
-    { refreshInterval: 15 * 60 * 1000 } // 15 minutes
+    { 
+      refreshInterval: 15 * 60 * 1000, // 15 minutes
+      revalidateOnFocus: false
+    }
   );
 
   if (isLoading) {
     return (
       <div className="mt-8 sm:mt-12">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Recent Bitcoin Filings</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Recent Company Filings (HKEX)</h2>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Hong Kong (--)</span>
+            <span className="text-xs text-gray-500">Loading...</span>
           </div>
         </div>
         <div className="space-y-3 sm:space-y-4">
@@ -127,7 +137,7 @@ export default function RecentFilings() {
     return (
       <div className="mt-8 sm:mt-12">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Recent Bitcoin Filings</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Recent Company Filings (HKEX)</h2>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
           <p className="text-gray-500">Unable to load recent filings</p>
@@ -141,10 +151,40 @@ export default function RecentFilings() {
 
   return (
     <div className="mt-8 sm:mt-12">
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Recent Bitcoin Filings</h2>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">Hong Kong ({filings.length})</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Recent Company Filings (HKEX)</h2>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+            {filings.length} {filter === 'bitcoin' ? 'Bitcoin-related' : ''} filing{filings.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Filter toggle */}
+          <div className="flex items-center gap-1.5 border rounded-lg p-0.5 bg-gray-50">
+            <button
+              onClick={() => setFilter('bitcoin')}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
+                filter === 'bitcoin'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              ₿ Bitcoin
+            </button>
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
+                filter === 'all'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              All
+            </button>
+          </div>
+          
+          {/* View toggle */}
           <div className="flex items-center gap-1 border rounded-md">
             <Button
               size="sm"
@@ -163,9 +203,10 @@ export default function RecentFilings() {
               <TableCellsIcon className="w-4 h-4" />
             </Button>
           </div>
+          
           <a 
             href="/filings" 
-            className="text-xs sm:text-sm text-orange-600 hover:text-orange-700 transition-colors"
+            className="text-xs sm:text-sm text-orange-600 hover:text-orange-700 transition-colors whitespace-nowrap"
           >
             View all →
           </a>
@@ -174,14 +215,18 @@ export default function RecentFilings() {
 
       {filings.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
-          <p className="text-gray-500">No recent filings found</p>
+          <p className="text-gray-500">
+            {filter === 'bitcoin' 
+              ? 'No Bitcoin-related filings in the last 30 days'
+              : 'No company filings found'}
+          </p>
           <p className="text-sm text-gray-400 mt-1">HKEX filings are scanned automatically every 2 hours</p>
         </div>
       ) : viewMode === 'cards' ? (
         // Card View
         <div className="space-y-3 sm:space-y-4">
           {filings.map((filing) => {
-            const styles = filingTypeStyles[filing.filing_type];
+            const styles = filingTypeStyles[filing.type];
             
             return (
               <div 
@@ -207,6 +252,11 @@ export default function RecentFilings() {
                         <span className="text-xs sm:text-sm text-gray-500">
                           ({filing.ticker})
                         </span>
+                        {filing.bitcoinRelated && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium">
+                            ₿ Bitcoin
+                          </span>
+                        )}
                         {!filing.verified && (
                           <span className="inline-flex items-center gap-1 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
                             Unverified
@@ -216,14 +266,14 @@ export default function RecentFilings() {
                       
                       <p className="text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2">
                         {filingLabel(filing)}{' '}
-                        {filing.btc_amount !== null && (
+                        {filing.btcAmount !== null && filing.btcAmount !== undefined && (
                           <span className="font-semibold">
-                            {Math.abs(filing.btc_amount).toLocaleString()} BTC
+                            {Math.abs(filing.btcAmount).toLocaleString()} BTC
                           </span>
                         )}
-                        {filing.total_holdings !== null && filing.total_holdings > 0 && (
+                        {filing.totalHoldings !== null && filing.totalHoldings !== undefined && filing.totalHoldings > 0 && (
                           <span className="text-gray-500 hidden sm:inline">
-                            {' '}• Total: {filing.total_holdings.toLocaleString()} BTC
+                            {' '}• Total: {filing.totalHoldings.toLocaleString()} BTC
                           </span>
                         )}
                       </p>
@@ -231,7 +281,7 @@ export default function RecentFilings() {
                       <div className="flex items-center gap-3 sm:gap-4 text-xs text-gray-500">
                         <span>{dayjs(filing.date).fromNow()}</span>
                         <a 
-                          href={filing.pdf_url}
+                          href={filing.source}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="hover:text-orange-600 transition-colors"
@@ -268,7 +318,7 @@ export default function RecentFilings() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filings.map((filing) => {
-                const styles = filingTypeStyles[filing.filing_type];
+                const styles = filingTypeStyles[filing.type];
                 
                 return (
                   <tr key={filing.id} className="hover:bg-gray-50">
@@ -278,32 +328,39 @@ export default function RecentFilings() {
                           {filingIcon(filing)}
                         </div>
                         <div>
-                          <a
-                            href={getHKEXAnnouncementsUrl(filing.ticker)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-medium text-gray-900 hover:text-blue-600"
-                          >
-                            {filing.company}
-                          </a>
+                          <div className="flex items-center gap-1.5">
+                            <a
+                              href={getHKEXAnnouncementsUrl(filing.ticker)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                            >
+                              {filing.company}
+                            </a>
+                            {filing.bitcoinRelated && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-orange-50 border border-orange-200 text-orange-700 text-[10px] font-medium">
+                                ₿
+                              </span>
+                            )}
+                            {filing.verified && (
+                              <CheckBadgeIcon className="w-4 h-4 text-green-600" />
+                            )}
+                          </div>
                           <div className="text-xs text-gray-500">{filing.ticker}</div>
                         </div>
-                        {filing.verified && (
-                          <CheckBadgeIcon className="w-4 h-4 text-green-600" />
-                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`text-sm font-medium ${styles.color}`}>
-                        {filing.btc_amount !== null 
-                          ? `${filing.filing_type === 'disposal' ? '-' : '+'}${Math.abs(filing.btc_amount).toLocaleString()}`
+                        {filing.btcAmount !== null && filing.btcAmount !== undefined
+                          ? `${filing.type === 'disposal' ? '-' : '+'}${Math.abs(filing.btcAmount).toLocaleString()}`
                           : '-'
                         }
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {filing.total_holdings !== null 
-                        ? filing.total_holdings.toLocaleString()
+                      {filing.totalHoldings !== null && filing.totalHoldings !== undefined
+                        ? filing.totalHoldings.toLocaleString()
                         : '-'
                       }
                     </td>
@@ -312,7 +369,7 @@ export default function RecentFilings() {
                         {dayjs(filing.date).fromNow()}
                       </div>
                       <a 
-                        href={filing.pdf_url}
+                        href={filing.source}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-orange-600 hover:text-orange-700"
@@ -331,10 +388,12 @@ export default function RecentFilings() {
       {/* Status indicator */}
       <div className="mt-4 text-center">
         <p className="text-xs text-gray-500">
-          <span className="text-orange-600">
-            {filings.length} recent filing{filings.length !== 1 ? 's' : ''}
-          </span>
-          {' '}• Auto-scanned every 2 hours from HKEX
+          Auto-scanned every 2 hours from HKEX
+          {filter === 'all' && (
+            <span className="ml-2">
+              • Filter by ₿ Bitcoin to see crypto-related filings only
+            </span>
+          )}
         </p>
       </div>
     </div>

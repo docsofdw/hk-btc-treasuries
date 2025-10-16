@@ -138,22 +138,39 @@ export async function GET(request: NextRequest) {
     const entityIds = entitiesWithBtc.map(entity => entity.id);
     const deltaMap = await calculateDeltas(supabase, entityIds);
     
+    // Fetch ticker and exchange from listings table (join with entities)
+    const { data: listingsData, error: listingsError } = await supabase
+      .from('listings')
+      .select('entity_id, ticker, exchange')
+      .eq('is_primary', true)
+      .in('entity_id', entityIds);
+    
+    if (listingsError) {
+      console.error('Error fetching listings:', listingsError);
+    }
+    
+    // Create a map of entity_id to listing info
+    const listingsInfoMap = new Map();
+    listingsData?.forEach(listing => {
+      listingsInfoMap.set(listing.entity_id, listing);
+    });
+    
     // Transform the data to match the expected format
     const holdings = entitiesWithBtc.map(entity => {
         const btcHoldings = entity.btc;
         const usdValue = btcHoldings ? btcHoldings * btcUsdRate : null;
         const deltaBtc = deltaMap.get(entity.id) ?? null;
         
-        // Generate a placeholder ticker from legal_name if not available
-        const ticker = entity.legal_name 
-          ? entity.legal_name.substring(0, 4).toUpperCase() 
-          : 'N/A';
+        // Get ticker and exchange from listings map
+        const listingInfo = listingsInfoMap.get(entity.id);
+        const ticker = listingInfo?.ticker || 'N/A';
+        const exchange = listingInfo?.exchange || 'HKEX';
         
         return {
           id: entity.id,
           company: entity.legal_name,
           ticker: ticker,
-          exchange: 'HKEX', // Default to HKEX for HK entities
+          exchange: exchange,
           headquarters: entity.hq,
           region: entity.region,
           btcHoldings,

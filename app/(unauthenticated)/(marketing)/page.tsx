@@ -297,66 +297,55 @@ export default function HomePage() {
       </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-10">
-        {/* Mobile-Optimized Page Title */}
-        <div className="mb-6 sm:mb-8 lg:mb-10">
-          <div className="text-center sm:text-left mb-4 sm:mb-6">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-2 sm:mb-3 lg:mb-4 leading-tight">
-              Hong Kong's Bitcoin Treasuries
-            </h2>
-            <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-gray-600 max-w-3xl mx-auto sm:mx-0 leading-relaxed">
-              Tracking corporate Bitcoin holdings from exchange filings. Source-linked. Updated daily.
+      <div className="max-w-7xl mx-auto px-5 md:px-6 py-4 sm:py-6 lg:py-10">
+        {/* Minimal HK-Only Hero */}
+        <div className="mb-8 md:mb-10">
+          <div className="text-center sm:text-left mb-6 md:mb-8">
+            <h1 className="text-[40px] md:text-[48px] tracking-[-0.02em] font-semibold text-gray-900 mb-3 leading-tight">
+              Hong Kong Corporate Bitcoin Treasuries
+            </h1>
+            <p className="text-lg text-base-600">
+              Source-linked from HKEX filings. Verified.
             </p>
           </div>
 
-          {/* Mobile-Optimized Dashboard */}
+          {/* 4-KPI Card */}
           {treasuryStats && (
-            <div className="space-y-4 sm:space-y-6">
-              {/* Mobile: Stack vertically, Desktop: Grid layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-                {/* Total Holdings - Full width */}
-                <div className="lg:col-span-3 bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4">
-                    <div className="mb-3 sm:mb-0">
-                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Hong Kong Corporate Bitcoin Holdings</h3>
-                      <DeltaIndicator
-                        current={treasuryStats.totalBtc}
-                        previous={previousTotalBtc}
-                        format="0,0.00"
-                        timeframe="WoW"
-                        updatedAt={treasuryStats.lastUpdated}
-                        className="mb-3"
-                      />
-                    </div>
-                    
-                    {/* Sparkline - Responsive sizing */}
-                    <div className="text-center sm:text-right">
-                      <div className="text-sm text-gray-600 mb-2">30-day trend</div>
-                      <SparklineChart
-                        data={generateSampleSparklineData(30, treasuryStats.totalBtc * 0.8)}
-                        width={120}
-                        height={40}
-                        color="#ef4444"
-                        showValue={false}
-                        showChange={true}
-                      />
-                    </div>
+            <div className="card p-5 md:p-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Total BTC */}
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Total BTC</div>
+                  <div className="text-[28px] md:text-[32px] font-semibold tabular-nums text-gray-900">
+                    {numeral(treasuryStats.totalBtc).format('0,0.00')}
                   </div>
-                  
-                  {/* Mobile-friendly stats grid */}
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-4 border-t border-gray-100">
-                    <div>
-                      <div className="text-xs sm:text-sm text-gray-600 mb-1">USD Value</div>
-                      <div className="text-lg sm:text-xl font-bold text-green-600">
-                        {numeral(treasuryStats.totalUsd).format('$0.00a')}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs sm:text-sm text-gray-600 mb-1">Companies</div>
-                      <div className="text-lg sm:text-xl font-bold text-blue-600">
-                        {treasuryStats.companyCount}
-                      </div>
-                    </div>
+                </div>
+                
+                {/* USD Value */}
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">USD Value</div>
+                  <div className="text-[28px] md:text-[32px] font-semibold tabular-nums text-gray-900">
+                    ${numeral(treasuryStats.totalUsd / 1000000).format('0,0')}m
+                  </div>
+                </div>
+                
+                {/* Companies */}
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Companies</div>
+                  <div className="text-[28px] md:text-[32px] font-semibold tabular-nums text-gray-900">
+                    {treasuryStats.companyCount}
+                  </div>
+                </div>
+                
+                {/* Priced */}
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Priced</div>
+                  <div className="text-[28px] md:text-[32px] font-semibold tabular-nums text-gray-900">
+                    {new Date(treasuryStats.lastUpdated).toLocaleTimeString('en-US', { 
+                      hour: 'numeric', 
+                      minute: '2-digit',
+                      hour12: true 
+                    })}
                   </div>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import {
   ColumnDef,
   flexRender,
@@ -13,7 +14,7 @@ import {
 import dayjs from 'dayjs';
 import numeral from 'numeral';
 import { TreasuryEntity } from '@/types/treasury';
-import { getOfficialExchangeUrl, getHKEXAnnouncementsUrl } from '@/lib/utils';
+import { getOfficialExchangeUrl, getHKEXAnnouncementsUrl, getHKEXCompanyPageUrl } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Badge from '@/components/ui/badge';
 import { Badge as OldBadge } from '@/components/ui/badge';
@@ -78,19 +79,13 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
               )}
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-gray-900 text-lg sm:text-xl leading-tight mb-1 truncate flex items-center gap-2">
-                  {entity.listingVenue === 'HKEX' ? (
-                    <a
-                      href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${entity.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-blue-600 transition-colors active:text-blue-700"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {entity.legalName}
-                    </a>
-                  ) : (
-                    entity.legalName
-                  )}
+                  <Link
+                    href={`/company/${encodeURIComponent(entity.ticker)}`}
+                    className="hover:text-blue-600 transition-colors active:text-blue-700"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {entity.legalName}
+                  </Link>
                   {entity.verified && (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -147,27 +142,22 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
                 )}
               </div>
             </div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="font-mono bg-gray-100 px-2.5 py-1 rounded-md text-sm font-medium text-gray-700">
+              <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-900 text-white text-xs font-medium">
                 {entity.ticker}
               </span>
-              <OldBadge 
-                variant="outline" 
-                className={`text-xs font-semibold px-2.5 py-1 ${
-                  entity.listingVenue === 'HKEX' 
-                    ? 'bg-red-50 text-red-700 border-red-300' 
-                    : entity.listingVenue === 'NASDAQ' 
-                    ? 'bg-blue-50 text-blue-700 border-blue-300' 
-                    : 'bg-purple-50 text-purple-700 border-purple-300'
-                }`}
-              >
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md border border-gray-300 text-gray-600 bg-white text-xs font-medium">
                 {entity.listingVenue}
-              </OldBadge>
+              </span>
               {/* Profile Badge */}
               {entity.managerProfile === 'ACTIVE_MANAGER' ? (
-                <Badge kind="active">Active Manager</Badge>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md border border-gray-300 text-gray-600 bg-white text-xs font-medium">
+                  Active Manager
+                </span>
               ) : entity.managerProfile === 'PASSIVE_HOLDER' ? (
-                <Badge kind="holder">Holder</Badge>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md border border-gray-300 text-gray-600 bg-white text-xs font-medium">
+                  Holder
+                </span>
               ) : null}
               {/* Stale Data Badge */}
               {(() => {
@@ -176,15 +166,14 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
                   const daysSinceDisclosure = (Date.now() - new Date(lastDisclosed).getTime()) / (1000 * 60 * 60 * 24);
                   if (daysSinceDisclosure > 90) {
                     return (
-                      <Badge kind="stale" title={`Last disclosed ${dayjs(lastDisclosed).format('MMM D, YYYY')}`}>
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md border border-warn-500 text-warn-500 bg-white text-xs font-medium" title={`Last disclosed ${dayjs(lastDisclosed).format('MMM D, YYYY')}`}>
                         Stale
-                      </Badge>
+                      </span>
                     );
                   }
                 }
                 return null;
               })()}
-              <span className="text-xs text-gray-500 truncate">{entity.hq}</span>
             </div>
           </div>
           <button 
@@ -299,14 +288,25 @@ const MobileCard = ({ entity, btcPrice, rank }: { entity: TreasuryEntity; btcPri
                 {entity.listingVenue === 'HKEX' && (
                   <>
                     <a
+                      href={getHKEXCompanyPageUrl(entity.ticker)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm hover:border-gray-400 hover:bg-gray-50 font-medium bg-white w-full justify-center transition-all active:scale-[0.98]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span>View filing</span>
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                    
+                    <a
                       href={getHKEXAnnouncementsUrl(entity.ticker)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-red-600 hover:text-red-800 font-medium bg-white px-4 py-3 rounded-xl border border-red-200 hover:border-red-300 w-full justify-center transition-all hover:shadow-sm active:scale-[0.98]"
+                      className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 w-full justify-center transition-all active:scale-[0.98]"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <FileText className="h-5 w-5" />
-                      <span>HKEX Filings</span>
+                      <span>View announcements</span>
                       <ExternalLink className="h-4 w-4" />
                     </a>
                     
@@ -616,17 +616,15 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
       {
         id: 'rank',
         header: '#',
-        size: 60,
+        size: 50,
         enableSorting: false,
         cell: ({ row, table }) => {
           // Only show ranks for Bitcoin holders, calculate rank based on BTC holdings
           const entity = row.original;
           if (entity.btc === 0) {
             return (
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 text-gray-400 font-medium text-sm border border-gray-200">
-                  —
-                </div>
+              <div className="text-center text-gray-400">
+                —
               </div>
             );
           }
@@ -637,15 +635,8 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           const rank = holders.findIndex(e => e.id === entity.id) + 1;
 
           return (
-            <div className="text-center">
-              <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm ${
-                rank === 1 ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-lg shadow-amber-500/30' : 
-                rank === 2 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-white shadow-lg shadow-gray-400/30' : 
-                rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-500/30' : 
-                'bg-gray-100 text-gray-600'
-              }`}>
-                {rank}
-              </div>
+            <div className="text-center font-medium text-gray-900">
+              {rank}
             </div>
           );
         },
@@ -654,7 +645,7 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
         id: 'legalName',
         header: ({ column }) => (
           <button
-            className="flex items-center gap-1 font-semibold hover:text-gray-700"
+            className="flex items-center gap-1 font-medium hover:text-gray-900"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
             Company Name
@@ -662,36 +653,28 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           </button>
         ),
         accessorKey: 'legalName',
+        size: 320,
         cell: ({ row }) => {
-          const isChineseADR = (row.original.listingVenue === 'NASDAQ' || row.original.listingVenue === 'NYSE') && 
-            (row.original.hq?.toLowerCase().includes('china') ||
-             row.original.hq?.toLowerCase().includes('beijing') ||
-             row.original.hq?.toLowerCase().includes('shanghai') ||
-             row.original.hq?.toLowerCase().includes('shenzhen'));
-
           return (
-            <div className="py-1">
-              <div className="font-semibold text-gray-900 text-base mb-1 flex items-center gap-2">
-                {row.original.listingVenue === 'HKEX' ? (
-                  <a
-                    href={`https://www.hkex.com.hk/Market-Data/Securities-Prices/Equities/Equities-Quote?sym=${row.original.ticker.replace('.HK', '').replace(/^0+/, '')}&sc_lang=en`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+            <div className="space-y-2">
+              {/* Company name + verification icon */}
+              <div className="flex items-center gap-2">
+                <span className="text-[15px] font-medium text-gray-900">
+                  <Link
+                    href={`/company/${encodeURIComponent(row.original.ticker)}`}
                     className="hover:text-blue-600 transition-colors"
                   >
                     {row.original.legalName}
-                  </a>
-                ) : (
-                  row.original.legalName
-                )}
+                  </Link>
+                </span>
                 {row.original.verified && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 text-good-500 flex-shrink-0" />
                     </TooltipTrigger>
                     <TooltipContent side="right" className="max-w-xs">
                       <div className="text-sm">
-                        <div className="font-semibold text-green-600 mb-1">✓ Verified</div>
+                        <div className="font-semibold text-good-500 mb-1">✓ Verified</div>
                         <div className="text-gray-700">
                           Holdings verified by admin review
                         </div>
@@ -699,54 +682,22 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                     </TooltipContent>
                   </Tooltip>
                 )}
-                {isChineseADR && (
-                  <div className="flex items-center gap-1">
-                    <OldBadge 
-                      variant="outline" 
-                      className="text-xs font-semibold bg-orange-50 text-orange-700 border-orange-300 px-1.5 py-0.5"
-                    >
-                      ADR
-                    </OldBadge>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 cursor-help transition-colors" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs p-3 text-sm bg-white border border-gray-200 shadow-lg rounded-lg">
-                        <div className="space-y-2">
-                          <div className="font-semibold text-gray-900">American Depositary Receipt (ADR)</div>
-                          <div className="text-gray-700">
-                            This Chinese company trades on US exchanges through ADRs - certificates representing shares of the foreign company.
-                          </div>
-                          <div className="text-xs text-gray-500 pt-1 border-t border-gray-100">
-                            <strong>ADR:</strong> US-traded certificate • <strong>Direct:</strong> Native exchange listing
-                          </div>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
               </div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-white">
-                  {row.original.ticker}
-                </span>
-                <OldBadge 
-                  variant="outline" 
-                  className={`text-xs font-medium ${
-                    row.original.listingVenue === 'HKEX' 
-                      ? 'bg-red-50/50 text-red-700 border-red-200' 
-                      : row.original.listingVenue === 'NASDAQ' 
-                      ? 'bg-blue-50/50 text-blue-700 border-blue-200' 
-                      : 'bg-purple-50/50 text-purple-700 border-purple-200'
-                  }`}
-                >
+              
+              {/* Metadata badges in a compact horizontal row */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] border border-gray-300 text-gray-600">
                   {row.original.listingVenue}
-                </OldBadge>
+                </span>
                 {/* Profile Badge */}
                 {row.original.managerProfile === 'ACTIVE_MANAGER' ? (
-                  <Badge kind="active">Active Manager</Badge>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] border border-gray-300 text-gray-600">
+                    Active Manager
+                  </span>
                 ) : row.original.managerProfile === 'PASSIVE_HOLDER' ? (
-                  <Badge kind="holder">Holder</Badge>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] border border-gray-300 text-gray-600">
+                    Holder
+                  </span>
                 ) : null}
                 {/* Stale Data Badge */}
                 {(() => {
@@ -755,9 +706,9 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                     const daysSinceDisclosure = (Date.now() - new Date(lastDisclosed).getTime()) / (1000 * 60 * 60 * 24);
                     if (daysSinceDisclosure > 90) {
                       return (
-                        <Badge kind="stale" title={`Last disclosed ${dayjs(lastDisclosed).format('MMM D, YYYY')}`}>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] border border-warn-500 text-warn-500" title={`Last disclosed ${dayjs(lastDisclosed).format('MMM D, YYYY')}`}>
                           Stale
-                        </Badge>
+                        </span>
                       );
                     }
                   }
@@ -769,10 +720,22 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
         },
       },
       {
+        id: 'ticker',
+        header: 'Ticker',
+        accessorKey: 'ticker',
+        size: 100,
+        enableSorting: false,
+        cell: ({ getValue }) => (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-900 text-white text-xs font-medium">
+            {getValue() as string}
+          </span>
+        ),
+      },
+      {
         id: 'btc',
         header: ({ column }) => (
           <button
-            className="flex items-center gap-1 font-semibold hover:text-gray-700 w-full justify-end"
+            className="flex items-center gap-1 font-medium hover:text-gray-900 w-full justify-end"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
             Bitcoin Held
@@ -780,22 +743,18 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           </button>
         ),
         accessorKey: 'btc',
+        size: 150,
         cell: ({ getValue }) => (
-          <div className="text-right">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200/50">
-              <Bitcoin className="h-5 w-5 text-orange-500" />
-              <span className="font-mono font-bold text-lg text-gray-900">
-                {numeral(getValue() as number).format('0,0')}
-              </span>
-            </div>
+          <div className="text-right font-mono text-gray-900">
+            ₿ {numeral(getValue() as number).format('0,0')}
           </div>
         ),
       },
       {
         id: 'delta',
         header: () => (
-          <div className="flex items-center justify-end gap-1">
-            <span className="font-semibold text-gray-700">Δ Since Last</span>
+          <div className="flex items-center justify-center gap-1">
+            <span className="font-medium text-gray-700">Δ Since Last</span>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
@@ -806,6 +765,7 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
             </Tooltip>
           </div>
         ),
+        size: 130,
         enableSorting: false,
         cell: ({ row }) => {
           const entity = row.original;
@@ -813,10 +773,10 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           
           if (deltaBtc !== null && deltaBtc !== undefined) {
             return (
-              <div className="text-right">
-                <span className={`text-sm font-mono font-medium ${
-                  deltaBtc > 0 ? 'text-green-600' : 
-                  deltaBtc < 0 ? 'text-red-600' : 
+              <div className="text-center">
+                <span className={`text-sm font-mono ${
+                  deltaBtc > 0 ? 'text-good-500' : 
+                  deltaBtc < 0 ? 'text-bad-500' : 
                   'text-gray-600'
                 }`}>
                   {deltaBtc > 0 && '+'}
@@ -827,16 +787,35 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
           }
           
           return (
-            <div className="text-right">
+            <div className="text-center">
               <span className="text-sm text-gray-400 font-mono">—</span>
             </div>
           );
         },
       },
       {
+        id: 'lastDisclosed',
         header: ({ column }) => (
           <button
-            className="flex items-center gap-1 font-semibold hover:text-gray-700 w-full justify-end"
+            className="flex items-center gap-1 font-medium hover:text-gray-900 w-full justify-end"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Last Disclosed
+            <ArrowUpDown className="h-3 w-3" />
+          </button>
+        ),
+        accessorKey: 'lastDisclosed',
+        size: 150,
+        cell: ({ getValue }) => (
+          <div className="text-right text-sm text-gray-600">
+            {dayjs(getValue() as string).format('MMM D, YYYY')}
+          </div>
+        ),
+      },
+      {
+        header: ({ column }) => (
+          <button
+            className="flex items-center gap-1 font-medium hover:text-gray-900 w-full justify-end"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
             USD Value
@@ -845,20 +824,17 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
         ),
         id: 'usdValue',
         accessorFn: (row) => row.btc * btcPrice,
+        size: 130,
         cell: ({ getValue }) => (
-          <div className="text-right">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200/50">
-              <DollarSign className="h-5 w-5 text-green-600" />
-              <span className="font-semibold text-lg text-gray-900">
-                {numeral(getValue() as number).format('$0.0a')}
-              </span>
-            </div>
+          <div className="text-right font-mono text-gray-900">
+            ${numeral(getValue() as number).format('0.0a')}
           </div>
         ),
       },
       {
         id: 'announcements',
-        header: 'Filings',
+        header: 'FILINGS',
+        size: 130,
         enableSorting: false,
         cell: ({ row }) => {
           const { ticker, listingVenue } = row.original;
@@ -867,13 +843,12 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
             return (
               <div className="text-center">
                 <a
-                  href={getHKEXAnnouncementsUrl(ticker)}
+                  href={getHKEXCompanyPageUrl(ticker)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm text-red-600 rounded-xl text-sm font-medium hover:bg-red-50 transition-all duration-200 border border-red-200/50 shadow-sm hover:shadow-md"
+                  className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-sm hover:border-gray-400 hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
                 >
-                  <FileText className="h-4 w-4" />
-                  <span>View Filing</span>
+                  View filing
                   <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
@@ -1192,7 +1167,7 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                         {headerGroup.headers.map((header) => (
                           <th
                             key={header.id}
-                            className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                            className="px-4 py-4 text-left text-sm font-medium text-gray-600"
                             style={{ width: header.getSize() }}
                           >
                             {flexRender(header.column.columnDef.header, header.getContext())}
@@ -1201,28 +1176,18 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
                       </tr>
                     ))}
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-200">
                     {table.getRowModel().rows.map((row) => {
-                      // Calculate if this is a top 3 Bitcoin holder
-                      const entity = row.original;
-                      let isTop3 = false;
-                      
-                      if (entity.btc > 0) {
-                        const allData = table.getFilteredRowModel().rows.map(r => r.original);
-                        const holders = allData.filter(e => e.btc > 0).sort((a, b) => b.btc - a.btc);
-                        const rank = holders.findIndex(e => e.id === entity.id) + 1;
-                        isTop3 = rank <= 3;
-                      }
-
                       return (
                         <tr
                           key={row.id}
-                          className={`group hover:bg-gray-50 transition-all duration-200 ${
-                            isTop3 ? 'bg-gradient-to-r from-yellow-50/30 to-orange-50/30' : ''
-                          }`}
+                          className="hover:bg-gray-50 transition-colors"
                         >
-                          {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id} className="px-5 py-4 whitespace-nowrap">
+                          {row.getVisibleCells().map((cell, cellIndex) => (
+                            <td 
+                              key={cell.id} 
+                              className={`px-4 py-5 align-top ${cellIndex === 1 ? 'text-left' : ''}`}
+                            >
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </td>
                           ))}
@@ -1234,7 +1199,7 @@ export default function EnhancedTreasuryTable({ data, btcPrice }: EnhancedTreasu
               </div>
 
               {table.getRowModel().rows.length === 0 && (
-                <div className="text-center py-16 bg-white/50 backdrop-blur-sm">
+                <div className="text-center py-16 bg-white">
                   <div className="text-gray-400 text-6xl mb-4">∅</div>
                   <div className="text-gray-600 font-medium text-lg mb-2">
                     {globalFilter ? 'No companies match your search' : 'No data available'}

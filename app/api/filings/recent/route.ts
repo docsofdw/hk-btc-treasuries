@@ -17,6 +17,7 @@ interface Filing {
   title?: string;
   summary?: string;
   listingVenue: string;
+  bitcoinRelated: boolean; // NEW: Flag for Bitcoin-related filings
 }
 
 interface RawFilingData {
@@ -32,12 +33,12 @@ interface RawFilingData {
   verified: boolean;
   summary: string | null;
   extracted_text: string | null;
+  entity_id: string;
+  bitcoin_related: boolean | null; // NEW: Bitcoin-related flag
   entities: {
     legal_name: string;
-    listing_venue: string;
   } | {
     legal_name: string;
-    listing_venue: string;
   }[];
 }
 
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const verified = searchParams.get('verified'); // 'true' to filter verified only
     const exchange = searchParams.get('exchange'); // Filter by specific exchange
+    const bitcoinRelated = searchParams.get('bitcoin_related'); // NEW: 'true', 'false', or null (all)
     
     const supabase = await createClient();
     
@@ -89,9 +91,10 @@ export async function GET(request: NextRequest) {
           verified,
           summary,
           extracted_text,
-          entities!inner(
-            legal_name,
-            listing_venue
+          entity_id,
+          bitcoin_related,
+          entities!inner (
+            legal_name
           )
         `)
         .in('source', ['HKEX', 'SEC'])
@@ -106,6 +109,14 @@ export async function GET(request: NextRequest) {
         query = query.eq('source', exchange);
       }
       
+      // NEW: Apply bitcoin_related filter
+      if (bitcoinRelated === 'true') {
+        query = query.eq('bitcoin_related', true);
+      } else if (bitcoinRelated === 'false') {
+        query = query.eq('bitcoin_related', false);
+      }
+      // If null or not specified, show all filings
+      
       query = query.limit(limit);
       
       const { data, error } = await query;
@@ -115,12 +126,28 @@ export async function GET(request: NextRequest) {
         throw error;
       }
       
+      // Fetch ticker data from listings table
+      const entityIds = data?.map(filing => filing.entity_id).filter(Boolean) || [];
+      const { data: listingsData } = await supabase
+        .from('listings')
+        .select('entity_id, ticker, exchange')
+        .eq('is_primary', true)
+        .in('entity_id', entityIds);
+      
+      // Create a map of entity_id to ticker
+      const tickerMap = new Map();
+      listingsData?.forEach(listing => {
+        tickerMap.set(listing.entity_id, listing.ticker);
+      });
+      
       const filings: Filing[] = data?.map((filing: RawFilingData) => {
         const entity = Array.isArray(filing.entities) ? filing.entities[0] : filing.entities;
+        const ticker = tickerMap.get(filing.entity_id) || 'N/A';
+        
         return {
         id: filing.id.toString(),
-        company: entity.legal_name,
-        ticker: '', // Ticker not available in entities table
+        company: entity?.legal_name || 'Unknown',
+        ticker: ticker,
         type: (filing.filing_type as Filing['type']) || 'disclosure',
         btcAmount: parseFloat(filing.btc?.toString() || '0'),
         totalHoldings: parseFloat(filing.total_holdings?.toString() || filing.btc?.toString() || '0'),
@@ -131,7 +158,8 @@ export async function GET(request: NextRequest) {
         documentType: filing.document_type || undefined,
         title: filing.title || undefined,
         summary: filing.summary || filing.extracted_text?.slice(0, 200) || undefined,
-        listingVenue: entity.listing_venue
+        listingVenue: filing.source, // Use source as listing venue (HKEX or SEC)
+        bitcoinRelated: filing.bitcoin_related || false // NEW: Bitcoin-related flag
       };
       }) || [];
       
@@ -163,27 +191,28 @@ export async function POST(request: NextRequest) {
     
     const supabase = await createClient();
     
-    let query = supabase
-      .from('raw_filings')
-      .select(`
-        id,
-        btc,
-        disclosed_at,
-        pdf_url,
-        source,
-        title,
-        filing_type,
-        document_type,
-        total_holdings,
-        verified,
-        summary,
-        extracted_text,
-          entities!inner(
-            legal_name,
-            listing_venue
+      let query = supabase
+        .from('raw_filings')
+        .select(`
+          id,
+          btc,
+          disclosed_at,
+          pdf_url,
+          source,
+          title,
+          filing_type,
+          document_type,
+          total_holdings,
+          verified,
+          summary,
+          extracted_text,
+          entity_id,
+          bitcoin_related,
+          entities!inner (
+            legal_name
           )
-      `)
-      .order('disclosed_at', { ascending: false });
+        `)
+        .order('disclosed_at', { ascending: false });
     
     // Apply filters
     if (filters.source) {
@@ -196,6 +225,11 @@ export async function POST(request: NextRequest) {
     
     if (filters.filing_type) {
       query = query.in('filing_type', Array.isArray(filters.filing_type) ? filters.filing_type : [filters.filing_type]);
+    }
+    
+    // NEW: Apply bitcoin_related filter
+    if (filters.bitcoin_related !== undefined) {
+      query = query.eq('bitcoin_related', filters.bitcoin_related);
     }
     
     // Ticker filter removed - ticker column doesn't exist in entities table
@@ -217,12 +251,28 @@ export async function POST(request: NextRequest) {
     
     if (error) throw error;
     
+    // Fetch ticker data from listings table
+    const entityIds = data?.map(filing => filing.entity_id).filter(Boolean) || [];
+    const { data: listingsData } = await supabase
+      .from('listings')
+      .select('entity_id, ticker, exchange')
+      .eq('is_primary', true)
+      .in('entity_id', entityIds);
+    
+    // Create a map of entity_id to ticker
+    const tickerMap = new Map();
+    listingsData?.forEach(listing => {
+      tickerMap.set(listing.entity_id, listing.ticker);
+    });
+    
     const filings: Filing[] = data?.map((filing: RawFilingData) => {
       const entity = Array.isArray(filing.entities) ? filing.entities[0] : filing.entities;
+      const ticker = tickerMap.get(filing.entity_id) || 'N/A';
+      
       return {
       id: filing.id.toString(),
-      company: entity.legal_name,
-      ticker: '', // Ticker not available in entities table
+      company: entity?.legal_name || 'Unknown',
+      ticker: ticker,
       type: (filing.filing_type as Filing['type']) || 'disclosure',
       btcAmount: parseFloat(filing.btc?.toString() || '0'),
       totalHoldings: parseFloat(filing.total_holdings?.toString() || filing.btc?.toString() || '0'),
@@ -233,7 +283,8 @@ export async function POST(request: NextRequest) {
       documentType: filing.document_type || undefined,
       title: filing.title || undefined,
       summary: filing.summary || filing.extracted_text?.slice(0, 200) || undefined,
-      listingVenue: entity.listing_venue
+      listingVenue: filing.source, // Use source as listing venue (HKEX or SEC)
+      bitcoinRelated: filing.bitcoin_related || false // NEW: Bitcoin-related flag
     };
     }) || [];
     

@@ -90,6 +90,10 @@
   --brand-secondary: oklch(0.531 0.255 286.623); /* purple-600 */
   --brand-secondary-hover: oklch(0.474 0.215 286.03); /* purple-700 */
   --brand-accent: oklch(0.661 0.238 351.367); /* pink-600 */
+  
+  /* Design System Tokens */
+  --surface: 255 255 255;
+  --border: 229 231 235;
 }
 
 .dark {
@@ -138,6 +142,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
+  html {
+    font-feature-settings: "tnum" 1, "cv02" 1;
+  }
+  
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-geist-sans), system-ui, sans-serif;
@@ -145,7 +154,18 @@
 }
 
 @layer utilities {
-  /* All the base reset CSS above... */
+  /* Design System Utility Classes */
+  .surface {
+    @apply bg-white/80 backdrop-blur-sm border border-gray-200;
+  }
+  
+  .card {
+    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
+  }
+  
+  .soft {
+    @apply rounded-lg border border-gray-100 bg-white;
+  }
   
   /* Screenshot mode styles */
   .screenshot-mode {
